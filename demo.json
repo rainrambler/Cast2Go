@@ -1,0 +1,31 @@
+{
+  "id": "0x1fcea38", 
+  "kind": "TranslationUnitDecl",
+  "inner": [
+    {
+      "id": "0xadf3a8",  
+      "kind": "CXXRecordDecl",
+      "loc": {
+        "offset": 6,
+        "file": "source.cc",
+        "line": 1,
+        "col": 7,
+        "tokLen": 1
+      },
+      "range": {
+        "begin": {
+          "offset": 0,
+          "col": 1,
+          "tokLen": 5
+        },
+        "end": {
+          "offset": 6,
+          "col": 7,
+          "tokLen": 1
+        }
+      },
+      "name": "S",
+      "tagUsed": "class"
+    }
+  ]
+}
