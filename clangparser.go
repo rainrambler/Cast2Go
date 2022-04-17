@@ -5,5 +5,5 @@ type AstC struct {
 }
 
 func (p *AstC) convert(jc *JsonContent) {
-	p.tud.convert(jc.Data)
+	p.tud = convertTranslationUnitDecl(jc.Data)
 }
