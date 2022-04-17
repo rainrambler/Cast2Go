@@ -12,7 +12,7 @@ func main() {
 	//fmt.Printf("%v\n", jc)
 	fmt.Println("================")
 	//iterContent(jc.Data)
-	//var ac AstC
-	//ac.convert(jc)
-	iterContentLayer(jc.Data, 6)
+	var ac AstC
+	ac.convert(jc)
+	//iterContentLayer(jc.Data, 6)
 }
