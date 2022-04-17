@@ -487,6 +487,10 @@ func (p *TypeClang) getString() string {
 	}
 }
 
+func (p *TypeClang) t2go() string {
+	return p.qtype.typestr // ?
+}
+
 type QualType struct {
 	typestr string
 }
