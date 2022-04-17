@@ -2,6 +2,11 @@ package main
 
 import (
 	"fmt"
+	"strings"
+)
+
+const (
+	EnterStr = "\n"
 )
 
 type ClangNode interface {
@@ -187,6 +192,19 @@ func (p *TypeClang) getString() string {
 
 func (p *TypeClang) t2go() string {
 	return p.qtype.typestr // ?
+}
+
+// Parse function return type?
+// "int f(float)" <== return int
+func (p *TypeClang) getReturnType() string {
+	s := p.qtype.typestr
+	pos := strings.Index(s, "(")
+
+	if pos == -1 {
+		return p.t2go()
+	}
+
+	return strings.TrimSpace(s[:pos])
 }
 
 type QualType struct {

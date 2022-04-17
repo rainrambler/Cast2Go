@@ -29,7 +29,7 @@ func (p *IntegerLiteral) t2go() string {
 }
 
 func (p *CharacterLiteral) t2go() string {
-	return ""
+	return fmt.Sprintf("%v", p.value1)
 }
 
 func (p *StringLiteral) t2go() string {

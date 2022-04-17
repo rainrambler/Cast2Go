@@ -173,9 +173,51 @@ type DeclRefExpr struct {
 	ExprParam
 	referencedDecl ClangNode
 }
+
+// Represents a function call (C99 6.5.2.2, C++ [expr.call]).
+// https://clang.llvm.org/doxygen/classclang_1_1CallExpr.html
 type CallExpr struct {
 	ExprParam
 }
+
+func (p *CallExpr) t2goOld() string {
+
+	if len(p.inner) == 0 {
+		return ""
+	}
+
+	s := ""
+
+	for _, nd := range p.inner {
+		s += nd.t2go()
+	}
+
+	//s += EnterStr
+	return s
+}
+
+func (p *CallExpr) t2go() string {
+	num := len(p.inner)
+	if num == 0 {
+		return ""
+	}
+
+	s := ""
+
+	// the first is func name
+	s += p.inner[0].t2go() + "("
+
+	// the others are parameters
+	for i := 1; i < num; i++ {
+		nd := p.inner[i]
+		s += nd.t2go() + ","
+	}
+
+	s = RemoveLastSubStr(s, ",")
+	s += ")"
+	return s
+}
+
 type ArraySubscriptExpr struct {
 	ExprParam
 }
@@ -186,11 +228,23 @@ type ExprParam struct {
 }
 
 func (p *ParenExpr) t2go() string {
-	return ""
+	if len(p.inner) != 1 {
+		fmt.Printf("[DBG][CStyleCastExpr]Format error: %+v!\n", p.inner)
+		return ""
+	}
+
+	// Only one child?
+	return p.inner[0].t2go()
 }
 
 func (p *CStyleCastExpr) t2go() string {
-	return ""
+	if len(p.inner) != 1 {
+		fmt.Printf("[DBG][CStyleCastExpr]Format error: %+v!\n", p.inner)
+		return ""
+	}
+
+	// Only one child?
+	return p.inner[0].t2go()
 }
 
 func (p *ImplicitCastExpr) t2go() string {
@@ -211,15 +265,23 @@ func (p *DeclRefExpr) t2go() string {
 	case *VarDecl:
 		decl := p.referencedDecl.(*VarDecl)
 		return decl.name
+	case *FunctionDecl:
+		decl := p.referencedDecl.(*FunctionDecl)
+		return decl.name
 	default:
 		return p.referencedDecl.t2go()
 	}
 }
 
-func (p *CallExpr) t2go() string {
+func (p *ArraySubscriptExpr) t2go() string {
 	return ""
 }
 
-func (p *ArraySubscriptExpr) t2go() string {
-	return ""
+func get_sum(num int) {
+	var i int
+	var sum int
+	for i = 0; i < num; i++ {
+		sum += i
+	}
+
 }

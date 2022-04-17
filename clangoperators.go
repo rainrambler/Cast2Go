@@ -116,10 +116,24 @@ type UnaryOperator struct {
 	canOverflow bool
 }
 
+// For compound assignments
+// https://clang.llvm.org/doxygen/classclang_1_1CompoundAssignOperator.html
 type CompoundAssignOperator struct {
 	Operator
 	computeResultType *TypeClang
 	computeLHSType    *TypeClang
+}
+
+func (p *CompoundAssignOperator) t2go() string {
+	if len(p.inner) != 2 {
+		return p.opcode
+	}
+
+	left := p.inner[0]
+	right := p.inner[1]
+
+	// TODO valueCategory
+	return left.t2go() + " " + p.opcode + " " + right.t2go()
 }
 
 type Operator struct {
@@ -138,8 +152,4 @@ func (p *UnaryOperator) t2go() string {
 	} else {
 		return p.opcode + p.inner[0].t2go()
 	}
-}
-
-func (p *CompoundAssignOperator) t2go() string {
-	return ""
 }

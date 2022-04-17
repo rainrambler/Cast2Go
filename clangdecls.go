@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 )
 
 type ClangDecl interface {
@@ -75,8 +74,10 @@ func (p *FunctionDecl) t2go() string {
 	fstart := fmt.Sprintf("func %s (", p.name)
 	s += fstart
 
+	rettype := p.type1.getReturnType()
+
 	if len(p.inner) == 0 {
-		s += "){}"
+		s += ") " + rettype + "{}"
 		return s
 	}
 
@@ -99,21 +100,20 @@ func (p *FunctionDecl) t2go() string {
 		}
 	}
 
-	if strings.HasSuffix(s, ",") {
-		s = s[:len(s)-1]
-	}
-	s += ") {\n"
+	s = RemoveLastSubStr(s, ",")
+	s += ") " + rettype + "{" + EnterStr
+	//s += ") {\n"
 	for {
 		if pos >= len(p.inner) {
 			break
 		}
 
 		stmt := p.inner[pos]
-		s += stmt.t2go() + "\n"
+		s += stmt.t2go() + EnterStr
 		pos++
 	}
 
-	s += "}\n"
+	s += "}" + EnterStr
 	return s
 }
 
@@ -179,9 +179,12 @@ func (p *RecordDecl) t2go() string {
 func (p *FieldDecl) t2go() string {
 	return ""
 }
+
 func (p *VarDecl) t2go() string {
-	return "var " + p.name + " " + p.type1.t2go() + "\n"
+	//return "var " + p.name + " " + p.type1.t2go() + EnterStr
+	return "var " + p.name + " " + p.type1.t2go()
 }
+
 func (p *IndirectFieldDecl) t2go() string {
 	return ""
 }

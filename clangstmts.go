@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 )
 
 func convertCompoundStmt(content interface{}) *CompoundStmt {
@@ -45,7 +44,6 @@ func convertDeclStmt(content interface{}) *DeclStmt {
 		}
 	}
 
-	//fmt.Printf("[DBG][DeclStmt]%+v\n", inst)
 	return &inst
 }
 
@@ -67,7 +65,6 @@ func convertForStmt(content interface{}) *ForStmt {
 		}
 	}
 
-	//fmt.Printf("[DBG][ForStmt]%+v\n", inst)
 	return &inst
 }
 
@@ -91,7 +88,6 @@ func convertIfStmt(content interface{}) *IfStmt {
 		}
 	}
 
-	//fmt.Printf("[DBG][IfStmt]%+v\n", inst)
 	return &inst
 }
 
@@ -113,7 +109,6 @@ func convertReturnStmt(content interface{}) *ReturnStmt {
 		}
 	}
 
-	//fmt.Printf("[DBG][ReturnStmt]%+v\n", inst)
 	return &inst
 }
 
@@ -142,16 +137,6 @@ type IfStmt struct {
 	hasElse bool
 }
 
-func (p *ForStmt) t2goOld() string {
-	s := "for "
-
-	for _, nd := range p.inner {
-		s += nd.t2go() + ";"
-	}
-
-	return s
-}
-
 func (p *ForStmt) t2go() string {
 	s := "for "
 
@@ -160,10 +145,8 @@ func (p *ForStmt) t2go() string {
 		case *BinaryOperator, *UnaryOperator:
 			s += nd.t2go() + ";"
 		default:
-			if strings.HasSuffix(s, ";") {
-				s = s[:len(s)-1]
-				s += "{\n"
-			}
+			s = RemoveLastSubStr(s, ";")
+			s += "{\n"
 			s += nd.t2go()
 		}
 	}
@@ -173,7 +156,24 @@ func (p *ForStmt) t2go() string {
 }
 
 func (p *IfStmt) t2go() string {
-	return ""
+	s := "if "
+
+	inited := false
+	for _, nd := range p.inner {
+		switch nd.(type) {
+		case *BinaryOperator, *UnaryOperator:
+			s += nd.t2go()
+		default:
+			if !inited {
+				s += "{\n"
+				inited = true
+			}
+			s += nd.t2go()
+		}
+	}
+
+	s += "\n}"
+	return s
 }
 
 func (p *DeclStmt) t2go() string {
@@ -185,13 +185,17 @@ func (p *DeclStmt) t2go() string {
 }
 
 func (p *ReturnStmt) t2go() string {
-	return ""
+	if len(p.inner) == 0 {
+		return "return"
+	}
+
+	return "return " + p.inner[0].t2go() // multi inner item?
 }
 
 func (p *CompoundStmt) t2go() string {
 	s := ""
 	for _, nd := range p.inner {
-		s += nd.t2go()
+		s += nd.t2go() + EnterStr
 	}
 	return s
 }

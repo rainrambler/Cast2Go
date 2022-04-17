@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"reflect"
+	"strings"
 )
 
 type JsonContent struct {
@@ -106,5 +107,24 @@ func iterContentLayer(content interface{}, layers int) {
 		// https://stackoverflow.com/questions/6372474/how-to-determine-an-interface-values-real-type
 		otherType := reflect.TypeOf(content)
 		fmt.Printf("Unknown: %+v\n", otherType)
+	}
+}
+
+func RemoveLastChar(s string) string {
+	switch len(s) {
+	case 0:
+		return ""
+	case 1:
+		return ""
+	default:
+		return s[:len(s)-1]
+	}
+}
+
+func RemoveLastSubStr(s, substr string) string {
+	if strings.HasSuffix(s, substr) {
+		return s[:len(s)-len(substr)]
+	} else {
+		return s
 	}
 }
