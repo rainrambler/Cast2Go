@@ -49,7 +49,7 @@ func iterContent(content interface{}) {
 	case string:
 		fmt.Printf("sTr:[%s]\n", content.(string))
 	case int:
-		fmt.Printf("iNt:[%d]\n", content.(string))
+		fmt.Printf("iNt:[%s]\n", content.(string))
 	case float64:
 		fmt.Printf("fLt:[%v]\n", content.(float64))
 	default:
@@ -99,7 +99,7 @@ func iterContentLayer(content interface{}, layers int) {
 	case string:
 		fmt.Printf("sTr:[%s]\n", content.(string))
 	case int:
-		fmt.Printf("iNt:[%d]\n", content.(string))
+		fmt.Printf("iNt:[%s]\n", content.(string))
 	case float64:
 		fmt.Printf("fLt:[%v]\n", content.(float64))
 	default:

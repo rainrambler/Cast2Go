@@ -5,7 +5,7 @@ import (
 )
 
 type ClangNode interface {
-	//Pos() int
+	t2go() string
 }
 
 type Node interface {
@@ -147,6 +147,8 @@ func convertNode(content interface{}) ClangNode {
 		return convertCharacterLiteral(content)
 	case "StringLiteral":
 		return convertStringLiteral(content)
+	case "BuiltinType":
+		return convertBuiltinType(content)
 	default:
 		fmt.Printf("[DBG][Node]Unknown kind: %v\n", vkind)
 		return nil
@@ -382,6 +384,18 @@ type StringLiteral struct {
 	value1 string
 }
 
+func (p *IntegerLiteral) t2go() string {
+	return ""
+}
+
+func (p *CharacterLiteral) t2go() string {
+	return ""
+}
+
+func (p *StringLiteral) t2go() string {
+	return ""
+}
+
 func convertIntegerLiteral(content interface{}) *IntegerLiteral {
 	var inst IntegerLiteral
 	varmap := content.(map[string]interface{})
@@ -471,6 +485,13 @@ type TypeClang struct {
 	qtype           *QualType
 	sugerqtype      *QualType
 	typeAliasDeclId string // point to another id
+}
+
+func createTypeClang() *TypeClang {
+	var tc TypeClang
+	tc.qtype = new(QualType)
+	tc.sugerqtype = new(QualType)
+	return &tc
 }
 
 func (p *TypeClang) dump() {
@@ -569,12 +590,48 @@ func (p *SourceRange) isValid() bool {
 	return true
 }
 
-type BuiltinType struct{}
+type TypeParam struct {
+	kind  string
+	id    string
+	type1 *TypeClang
+}
+
+type BuiltinType struct {
+	TypeParam
+}
+
 type RecordType struct{}
 type PointerType struct{}
 type ConstantArrayType struct{}
 type TypedefType struct{}
 type ElaboratedType struct{}
+
+type ParenType struct{}
+type FunctionProtoType struct{}
+
+func (p BuiltinType) t2go() string {
+	return ""
+}
+
+func convertBuiltinType(content interface{}) *BuiltinType {
+	var inst BuiltinType
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "type":
+			inst.type1 = convertTypeClang(v)
+		default:
+			fmt.Printf("[DBG][BuiltinType]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	//fmt.Printf("[DBG][BuiltinType]%+v\n", inst)
+	return &inst
+}
 
 type AttrParam struct {
 	id        string
@@ -613,8 +670,46 @@ type ModeAttr struct{}
 type WarnUnusedResultAttr struct {
 	AttrParam
 }
-type ParenType struct{}
-type FunctionProtoType struct{}
+
+func (p *NoThrowAttr) t2go() string {
+	return ""
+}
+
+func (p *RestrictAttr) t2go() string {
+	return ""
+}
+
+func (p *BuiltinAttr) t2go() string {
+	return ""
+}
+
+func (p *FormatAttr) t2go() string {
+	return ""
+}
+
+func (p *AsmLabelAttr) t2go() string {
+	return ""
+}
+
+func (p *ConstAttr) t2go() string {
+	return ""
+}
+
+func (p *PureAttr) t2go() string {
+	return ""
+}
+
+func (p *NonNullAttr) t2go() string {
+	return ""
+}
+
+func (p *ModeAttr) t2go() string {
+	return ""
+}
+
+func (p *WarnUnusedResultAttr) t2go() string {
+	return ""
+}
 
 type NodeParam struct {
 	id     string

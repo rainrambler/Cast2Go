@@ -157,3 +157,27 @@ type ExprParam struct {
 	NodeParam
 	valueCategory string
 }
+
+func (p *ParenExpr) t2go() string {
+	return ""
+}
+
+func (p *CStyleCastExpr) t2go() string {
+	return ""
+}
+
+func (p *ImplicitCastExpr) t2go() string {
+	return ""
+}
+
+func (p *DeclRefExpr) t2go() string {
+	return ""
+}
+
+func (p *CallExpr) t2go() string {
+	return ""
+}
+
+func (p *ArraySubscriptExpr) t2go() string {
+	return ""
+}

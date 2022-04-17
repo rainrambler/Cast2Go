@@ -115,3 +115,15 @@ type Operator struct {
 	valueCategory string
 	opcode        string
 }
+
+func (p *BinaryOperator) t2go() string {
+	return ""
+}
+
+func (p *UnaryOperator) t2go() string {
+	return ""
+}
+
+func (p *CompoundAssignOperator) t2go() string {
+	return ""
+}

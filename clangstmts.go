@@ -38,7 +38,6 @@ func convertDeclStmt(content interface{}) *DeclStmt {
 		case "range":
 			inst.range1 = convertSourceRange(v)
 		case "inner":
-			// ignore
 			inst.inner = convertInnerNodes(v)
 		default:
 			fmt.Printf("[DBG][DeclStmt]Unknown [%v]:%v\n", k, v)
@@ -61,7 +60,6 @@ func convertForStmt(content interface{}) *ForStmt {
 		case "range":
 			inst.range1 = convertSourceRange(v)
 		case "inner":
-			// ignore
 			inst.inner = convertInnerNodes(v)
 		default:
 			fmt.Printf("[DBG][ForStmt]Unknown [%v]:%v\n", k, v)
@@ -86,7 +84,6 @@ func convertIfStmt(content interface{}) *IfStmt {
 		case "hasElse":
 			inst.hasElse = v.(bool)
 		case "inner":
-			// ignore
 			inst.inner = convertInnerNodes(v)
 		default:
 			fmt.Printf("[DBG][IfStmt]Unknown [%v]:%v\n", k, v)
@@ -109,7 +106,6 @@ func convertReturnStmt(content interface{}) *ReturnStmt {
 		case "range":
 			inst.range1 = convertSourceRange(v)
 		case "inner":
-			// ignore
 			inst.inner = convertInnerNodes(v)
 		default:
 			fmt.Printf("[DBG][ReturnStmt]Unknown [%v]:%v\n", k, v)
@@ -149,4 +145,24 @@ type ForStmt struct {
 type IfStmt struct {
 	NodeParam
 	hasElse bool
+}
+
+func (p *ForStmt) t2go() string {
+	return ""
+}
+
+func (p *IfStmt) t2go() string {
+	return ""
+}
+
+func (p *DeclStmt) t2go() string {
+	return ""
+}
+
+func (p *ReturnStmt) t2go() string {
+	return ""
+}
+
+func (p *CompoundStmt) t2go() string {
+	return ""
 }

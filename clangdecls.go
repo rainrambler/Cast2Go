@@ -40,6 +40,11 @@ type TypedefDecl struct {
 	isUsed       bool
 	isReferenced bool
 	isImplicit   bool
+	inner        []ClangNode
+}
+
+func (p *TypedefDecl) t2go() string {
+	return ""
 }
 
 type FunctionDecl struct {
@@ -101,9 +106,11 @@ func (p *FunctionDecl) t2go() string {
 			break
 		}
 
-		//stmt := p.inner[pos]
-
+		stmt := p.inner[pos]
+		s += stmt.t2go() + "\n"
 	}
+
+	s += "}\n"
 	return s
 }
 
@@ -133,7 +140,7 @@ type ParmVarDecl struct {
 	isUsed      bool
 }
 
-func (p *ParmVarDecl) t2go() string {
+func (p ParmVarDecl) t2go() string {
 	return p.name + " " + p.type1.t2go()
 }
 
@@ -143,6 +150,19 @@ type TranslationUnitDecl struct {
 	Decl
 
 	inner []ClangNode
+}
+
+func (p *RecordDecl) t2go() string {
+	return ""
+}
+func (p *FieldDecl) t2go() string {
+	return ""
+}
+func (p *VarDecl) t2go() string {
+	return ""
+}
+func (p *IndirectFieldDecl) t2go() string {
+	return ""
 }
 
 func convertTranslationUnitDecl(content interface{}) *TranslationUnitDecl {
@@ -165,10 +185,12 @@ func convertTranslationUnitDecl(content interface{}) *TranslationUnitDecl {
 		}
 	}
 
-	fmt.Printf("[DBG]%+v\n", tud)
-	for _, v := range tud.inner {
-		fmt.Printf("[DBG]%+v\n", v)
-	}
+	//fmt.Printf("[DBG]%+v\n", tud)
+	/*
+		for _, v := range tud.inner {
+			fmt.Printf("[DBG]%+v\n", v)
+		}
+	*/
 	return &tud
 }
 
@@ -200,8 +222,7 @@ func convertTypedefDecl(content interface{}) *TypedefDecl {
 		case "mangledName":
 			tud.mangledName = v.(string)
 		case "inner":
-		// ignore
-		//tud.inner = convertInner(v)
+			tud.inner = convertInnerNodes(v)
 		default:
 			fmt.Printf("[DBG][TypedefDecl]Unknown [%v]:%v\n", k, v)
 		}
@@ -230,9 +251,6 @@ func convertRecordDecl(content interface{}) *RecordDecl {
 			tud.tagUsed = v.(string)
 		case "isUsed":
 			tud.isUsed = v.(bool)
-		case "inner":
-		// ignore
-		//tud.inner = convertInner(v)
 		default:
 			fmt.Printf("[DBG][RecordDecl]Unknown [%v]:%v\n", k, v)
 		}
@@ -255,9 +273,6 @@ func convertFieldDecl(content interface{}) *FieldDecl {
 			tud.loc = convertSourceLocation(v)
 		case "range":
 			tud.range1 = convertSourceRange(v)
-		case "inner":
-		// ignore
-		//tud.inner = convertInner(v)
 		default:
 			fmt.Printf("[DBG][FieldDecl]Unknown [%v]:%v\n", k, v)
 		}
@@ -280,9 +295,6 @@ func convertVarDecl(content interface{}) *VarDecl {
 			tud.loc = convertSourceLocation(v)
 		case "range":
 			tud.range1 = convertSourceRange(v)
-		case "inner":
-		// ignore
-		//tud.inner = convertInner(v)
 		default:
 			fmt.Printf("[DBG][VarDecl]Unknown [%v]:%v\n", k, v)
 		}
@@ -351,9 +363,6 @@ func convertParmVarDecl(content interface{}) *ParmVarDecl {
 			tud.mangledName = v.(string)
 		case "isUsed":
 			tud.isUsed = v.(bool)
-		case "inner":
-		// ignore
-		//tud.inner = convertInner(v)
 		default:
 			fmt.Printf("[DBG][ParmVarDecl]Unknown [%v]:%v\n", k, v)
 		}
@@ -376,9 +385,6 @@ func convertIndirectFieldDecl(content interface{}) *IndirectFieldDecl {
 			tud.loc = convertSourceLocation(v)
 		case "range":
 			tud.range1 = convertSourceRange(v)
-		case "inner":
-		// ignore
-		//tud.inner = convertInner(v)
 		default:
 			fmt.Printf("[DBG][IndirectFieldDecl]Unknown [%v]:%v\n", k, v)
 		}
