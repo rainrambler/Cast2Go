@@ -94,8 +94,20 @@ func convertCompoundAssignOperator(content interface{}) *CompoundAssignOperator 
 	return &inst
 }
 
+// A builtin binary operation expression
+// https://clang.llvm.org/doxygen/classclang_1_1BinaryOperator.html
 type BinaryOperator struct {
 	Operator
+}
+
+func (p *BinaryOperator) t2go() string {
+	if len(p.inner) != 2 {
+		return p.opcode
+	}
+
+	left := p.inner[0]
+	right := p.inner[1]
+	return left.t2go() + " " + p.opcode + " " + right.t2go()
 }
 
 type UnaryOperator struct {
@@ -116,12 +128,16 @@ type Operator struct {
 	opcode        string
 }
 
-func (p *BinaryOperator) t2go() string {
-	return ""
-}
-
 func (p *UnaryOperator) t2go() string {
-	return ""
+	if len(p.inner) != 1 {
+		return p.opcode
+	}
+
+	if p.isPostfix {
+		return p.inner[0].t2go() + p.opcode
+	} else {
+		return p.opcode + p.inner[0].t2go()
+	}
 }
 
 func (p *CompoundAssignOperator) t2go() string {

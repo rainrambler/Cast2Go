@@ -89,10 +89,12 @@ func (p *FunctionDecl) t2go() string {
 		pvd := p.inner[pos] // the first should be ParmVarDecl
 		if isParmVarDecl(pvd) {
 			// TODO impl
-			decl := pvd.(ParmVarDecl)
+			decl := pvd.(*ParmVarDecl)
 			s += decl.t2go() + ","
 			pos++
 		} else {
+			//otherType := reflect.TypeOf(pvd)
+			//fmt.Printf("Unknown Node: %+v\n", otherType)
 			break
 		}
 	}
@@ -108,6 +110,7 @@ func (p *FunctionDecl) t2go() string {
 
 		stmt := p.inner[pos]
 		s += stmt.t2go() + "\n"
+		pos++
 	}
 
 	s += "}\n"
@@ -116,7 +119,8 @@ func (p *FunctionDecl) t2go() string {
 
 func isParmVarDecl(v ClangNode) bool {
 	switch v.(type) {
-	case ParmVarDecl:
+	case *ParmVarDecl:
+		fmt.Printf("[DBG]PVD: %+v\n", v)
 		return true
 	default:
 		return false
@@ -130,13 +134,22 @@ type RecordDecl struct {
 	tagUsed     string
 }
 type FieldDecl struct{ Decl }
-type VarDecl struct{ Decl }
+
+type VarDecl struct {
+	Decl
+	isUsed      bool
+	name        string
+	mangledName string
+	init1       string
+	type1       *TypeClang
+	inner       []ClangNode
+}
 
 type ParmVarDecl struct {
 	Decl
 	mangledName string
 	name        string
-	type1       *TypeClang // ?
+	type1       *TypeClang
 	isUsed      bool
 }
 
@@ -152,6 +165,14 @@ type TranslationUnitDecl struct {
 	inner []ClangNode
 }
 
+func (p *TranslationUnitDecl) t2go() string {
+	s := ""
+	for _, nd := range p.inner {
+		s += nd.t2go()
+	}
+	return s
+}
+
 func (p *RecordDecl) t2go() string {
 	return ""
 }
@@ -159,7 +180,7 @@ func (p *FieldDecl) t2go() string {
 	return ""
 }
 func (p *VarDecl) t2go() string {
-	return ""
+	return "var " + p.name + " " + p.type1.t2go() + "\n"
 }
 func (p *IndirectFieldDecl) t2go() string {
 	return ""
@@ -295,6 +316,18 @@ func convertVarDecl(content interface{}) *VarDecl {
 			tud.loc = convertSourceLocation(v)
 		case "range":
 			tud.range1 = convertSourceRange(v)
+		case "mangledName":
+			tud.mangledName = v.(string)
+		case "name":
+			tud.name = v.(string)
+		case "isUsed":
+			tud.isUsed = v.(bool)
+		case "type":
+			tud.type1 = convertTypeClang(v)
+		case "init":
+			tud.init1 = v.(string)
+		case "inner":
+			tud.inner = convertInnerNodes(v)
 		default:
 			fmt.Printf("[DBG][VarDecl]Unknown [%v]:%v\n", k, v)
 		}

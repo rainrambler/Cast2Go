@@ -133,6 +133,31 @@ func convertCStyleCastExpr(content interface{}) *CStyleCastExpr {
 	return &inst
 }
 
+func convertArraySubscriptExpr(content interface{}) *ArraySubscriptExpr {
+	var inst ArraySubscriptExpr
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		case "type":
+			inst.type1 = convertTypeClang(v)
+		case "valueCategory":
+			inst.valueCategory = v.(string)
+		case "inner":
+			inst.inner = convertInnerNodes(v)
+		default:
+			fmt.Printf("[DBG][ArraySubscriptExpr]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	return &inst
+}
+
 type ParenExpr struct {
 	ExprParam
 }
@@ -151,7 +176,9 @@ type DeclRefExpr struct {
 type CallExpr struct {
 	ExprParam
 }
-type ArraySubscriptExpr struct{}
+type ArraySubscriptExpr struct {
+	ExprParam
+}
 
 type ExprParam struct {
 	NodeParam
@@ -167,11 +194,26 @@ func (p *CStyleCastExpr) t2go() string {
 }
 
 func (p *ImplicitCastExpr) t2go() string {
-	return ""
+	if len(p.inner) != 1 {
+		fmt.Printf("[DBG][ImplicitCastExpr]Format error: %+v!\n", p.inner)
+		return ""
+	}
+
+	// Only one child?
+	return p.inner[0].t2go()
 }
 
 func (p *DeclRefExpr) t2go() string {
-	return ""
+	switch p.referencedDecl.(type) {
+	case *ParmVarDecl:
+		decl := p.referencedDecl.(*ParmVarDecl)
+		return decl.name
+	case *VarDecl:
+		decl := p.referencedDecl.(*VarDecl)
+		return decl.name
+	default:
+		return p.referencedDecl.t2go()
+	}
 }
 
 func (p *CallExpr) t2go() string {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 )
 
 func convertCompoundStmt(content interface{}) *CompoundStmt {
@@ -121,17 +122,11 @@ type Stmt struct {
 }
 
 type CompoundStmt struct {
-	kind   string
-	id     string
-	range1 *SourceRange // "range" is a keyword
-	inner  []ClangNode
+	NodeParam
 }
 
 type ReturnStmt struct {
-	kind   string
-	id     string
-	range1 *SourceRange // "range" is a keyword
-	inner  []ClangNode
+	NodeParam
 }
 
 type DeclStmt struct {
@@ -147,8 +142,34 @@ type IfStmt struct {
 	hasElse bool
 }
 
+func (p *ForStmt) t2goOld() string {
+	s := "for "
+
+	for _, nd := range p.inner {
+		s += nd.t2go() + ";"
+	}
+
+	return s
+}
+
 func (p *ForStmt) t2go() string {
-	return ""
+	s := "for "
+
+	for _, nd := range p.inner {
+		switch nd.(type) {
+		case *BinaryOperator, *UnaryOperator:
+			s += nd.t2go() + ";"
+		default:
+			if strings.HasSuffix(s, ";") {
+				s = s[:len(s)-1]
+				s += "{\n"
+			}
+			s += nd.t2go()
+		}
+	}
+
+	s += "}"
+	return s
 }
 
 func (p *IfStmt) t2go() string {
@@ -156,7 +177,11 @@ func (p *IfStmt) t2go() string {
 }
 
 func (p *DeclStmt) t2go() string {
-	return ""
+	s := ""
+	for _, nd := range p.inner {
+		s += nd.t2go()
+	}
+	return s
 }
 
 func (p *ReturnStmt) t2go() string {
@@ -164,5 +189,9 @@ func (p *ReturnStmt) t2go() string {
 }
 
 func (p *CompoundStmt) t2go() string {
-	return ""
+	s := ""
+	for _, nd := range p.inner {
+		s += nd.t2go()
+	}
+	return s
 }
