@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 )
 
 type ClangDecl interface {
@@ -64,6 +65,57 @@ func (p *FunctionDecl) dump() {
 	}
 }
 
+func (p *FunctionDecl) t2go() string {
+	s := ""
+	fstart := fmt.Sprintf("func %s (", p.name)
+	s += fstart
+
+	if len(p.inner) == 0 {
+		s += "){}"
+		return s
+	}
+
+	pos := 0
+	for {
+		if pos >= len(p.inner) {
+			break
+		}
+
+		pvd := p.inner[pos] // the first should be ParmVarDecl
+		if isParmVarDecl(pvd) {
+			// TODO impl
+			decl := pvd.(ParmVarDecl)
+			s += decl.t2go() + ","
+			pos++
+		} else {
+			break
+		}
+	}
+
+	if strings.HasSuffix(s, ",") {
+		s = s[:len(s)-1]
+	}
+	s += ") {\n"
+	for {
+		if pos >= len(p.inner) {
+			break
+		}
+
+		//stmt := p.inner[pos]
+
+	}
+	return s
+}
+
+func isParmVarDecl(v ClangNode) bool {
+	switch v.(type) {
+	case ParmVarDecl:
+		return true
+	default:
+		return false
+	}
+}
+
 type RecordDecl struct {
 	Decl
 	mangledName string
@@ -79,6 +131,10 @@ type ParmVarDecl struct {
 	name        string
 	type1       *TypeClang // ?
 	isUsed      bool
+}
+
+func (p *ParmVarDecl) t2go() string {
+	return p.name + " " + p.type1.t2go()
 }
 
 type IndirectFieldDecl struct{ Decl }
