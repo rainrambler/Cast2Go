@@ -8,66 +8,48 @@ type ClangNode interface {
 	//Pos() int
 }
 
-type ClangDecl interface {
-	getKind() string
+type Node interface {
+	Desc() string
 }
 
-type Decl struct {
-	sourceLoc *SourceLocation
-	sourceRg  *SourceRange
-	kind      string
-	id        string
-	loc       *SourceLocation
-	range1    *SourceRange // "range" is a keyword
-}
-
-func (p *Decl) getSourceRange() *SourceRange {
-	return p.sourceRg
-}
-
-// TODO real kind type?
-func (p *Decl) getKind() string {
-	return p.kind
-}
-
-type TranslationUnitDecl struct {
-	Decl
-
-	inner []ClangNode
-}
-
-func convertTranslationUnitDecl(content interface{}) *TranslationUnitDecl {
-	var tud TranslationUnitDecl
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			tud.id = v.(string)
-		case "kind":
-			tud.kind = v.(string)
-		case "loc":
-			tud.loc = convertSourceLocation(v)
-		case "range":
-			tud.range1 = convertSourceRange(v)
-		case "inner":
-			tud.inner = convertInnerNodes(v)
-		default:
-			fmt.Printf("[DBG]Unknown [%v]:%v\n", k, v)
-		}
-	}
-
-	fmt.Printf("[DBG]%+v\n", tud)
-	for _, v := range tud.inner {
-		fmt.Printf("[DBG]%+v\n", v)
-	}
-	return &tud
+// https://clang.llvm.org/doxygen/classclang_1_1SourceLocation.html
+type SourceLocation struct {
+	offset       int
+	line         int
+	col          int
+	tokLen       int
+	file1        string
+	includedFrom *IncludedFrom
 }
 
 func convertSourceLocation(content interface{}) *SourceLocation {
-	return nil
+	var inst SourceLocation
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "offset":
+			inst.offset = int(v.(float64))
+		case "col":
+			inst.col = int(v.(float64))
+		case "tokLen":
+			inst.tokLen = int(v.(float64))
+		case "line":
+			inst.line = int(v.(float64))
+		case "file":
+			inst.file1 = v.(string)
+		case "includedFrom":
+			inst.includedFrom = convertIncludedFrom(v)
+		default:
+			fmt.Printf("[DBG][SourceLocation]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	//fmt.Printf("[DBG][SourceLocation]%+v\n", inst)
+	return &inst
 }
 
 func convertSourceRange(content interface{}) *SourceRange {
+	// TODO implement
 	return nil
 }
 
@@ -79,6 +61,8 @@ func convertInnerNodes(content interface{}) []ClangNode {
 		di := convertNode(v)
 		if di != nil {
 			nodes = append(nodes, di)
+
+			fmt.Printf("[DBG]Add Node [%v]: %+v\n", &di, di)
 		}
 	}
 	return nodes
@@ -86,6 +70,9 @@ func convertInnerNodes(content interface{}) []ClangNode {
 
 func convertNode(content interface{}) ClangNode {
 	varmap := content.(map[string]interface{})
+	if len(varmap) == 0 {
+		return nil
+	}
 	vkind, exists := varmap["kind"]
 	if !exists {
 		fmt.Printf("[DBG][Node]No kind. Cannot convert %+v\n", content)
@@ -120,10 +107,24 @@ func convertNode(content interface{}) ClangNode {
 		return convertIfStmt(content)
 	case "ReturnStmt":
 		return convertReturnStmt(content)
+	case "AsmLabelAttr":
+		return convertAsmLabelAttr(content)
+	case "BuiltinAttr":
+		return convertBuiltinAttr(content)
+	case "ConstAttr":
+		return convertConstAttr(content)
+	case "FormatAttr":
+		return convertFormatAttr(content)
 	case "NonNullAttr":
 		return convertNonNullAttr(content)
 	case "NoThrowAttr":
 		return convertNoThrowAttr(content)
+	case "PureAttr":
+		return convertPureAttr(content)
+	case "RestrictAttr":
+		return convertRestrictAttr(content)
+	case "WarnUnusedResultAttr":
+		return convertWarnUnusedResultAttr(content)
 	case "BinaryOperator":
 		return convertBinaryOperator(content)
 	case "UnaryOperator":
@@ -134,456 +135,342 @@ func convertNode(content interface{}) ClangNode {
 		return convertImplicitCastExpr(content)
 	case "CallExpr":
 		return convertCallExpr(content)
+	case "CStyleCastExpr":
+		return convertCStyleCastExpr(content)
+	case "DeclRefExpr":
+		return convertDeclRefExpr(content)
+	case "ParenExpr":
+		return convertParenExpr(content)
+	case "IntegerLiteral":
+		return convertIntegerLiteral(content)
+	case "CharacterLiteral":
+		return convertCharacterLiteral(content)
+	case "StringLiteral":
+		return convertStringLiteral(content)
 	default:
 		fmt.Printf("[DBG][Node]Unknown kind: %v\n", vkind)
 		return nil
 	}
 }
 
-func convertTypedefDecl(content interface{}) *TypedefDecl {
-	var tud TypedefDecl
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			tud.id = v.(string)
-		case "kind":
-			tud.kind = v.(string)
-		case "loc":
-			tud.loc = convertSourceLocation(v)
-		case "range":
-			tud.range1 = convertSourceRange(v)
-		case "type":
-			tud.type1 = convertTypeClang(v)
-		case "name":
-			tud.name = v.(string)
-		case "init":
-			tud.init1 = v.(string)
-		case "isImplicit":
-			tud.isImplicit = v.(bool)
-		case "isUsed":
-			tud.isUsed = v.(bool)
-		case "mangledName":
-			tud.mangledName = v.(string)
-		case "inner":
-		// ignore
-		//tud.inner = convertInner(v)
-		default:
-			fmt.Printf("[DBG]Unknown [%v]:%v in TypedefDecl\n", k, v)
-		}
-	}
-
-	fmt.Printf("[DBG][TypedefDecl]%+v\n", tud)
-	return &tud
-}
-
-func convertRecordDecl(content interface{}) *RecordDecl {
-	var tud RecordDecl
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			tud.id = v.(string)
-		case "kind":
-			tud.kind = v.(string)
-		case "loc":
-			tud.loc = convertSourceLocation(v)
-		case "range":
-			tud.range1 = convertSourceRange(v)
-		case "mangledName":
-			tud.mangledName = v.(string)
-		case "isUsed":
-			tud.isUsed = v.(bool)
-		case "inner":
-		// ignore
-		//tud.inner = convertInner(v)
-		default:
-			fmt.Printf("[DBG]Unknown [%v]:%v\n", k, v)
-		}
-	}
-
-	//fmt.Printf("[DBG]%+v\n", tud)
-	return &tud
-}
-
-func convertFieldDecl(content interface{}) *FieldDecl {
-	var tud FieldDecl
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			tud.id = v.(string)
-		case "kind":
-			tud.kind = v.(string)
-		case "loc":
-			tud.loc = convertSourceLocation(v)
-		case "range":
-			tud.range1 = convertSourceRange(v)
-		case "inner":
-		// ignore
-		//tud.inner = convertInner(v)
-		default:
-			fmt.Printf("[DBG]Unknown [%v]:%v\n", k, v)
-		}
-	}
-
-	//fmt.Printf("[DBG]%+v\n", tud)
-	return &tud
-}
-
-func convertVarDecl(content interface{}) *VarDecl {
-	var tud VarDecl
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			tud.id = v.(string)
-		case "kind":
-			tud.kind = v.(string)
-		case "loc":
-			tud.loc = convertSourceLocation(v)
-		case "range":
-			tud.range1 = convertSourceRange(v)
-		case "inner":
-		// ignore
-		//tud.inner = convertInner(v)
-		default:
-			fmt.Printf("[DBG]Unknown [%v]:%v\n", k, v)
-		}
-	}
-
-	//fmt.Printf("[DBG]%+v\n", tud)
-	return &tud
-}
-
-func convertFunctionDecl(content interface{}) *FunctionDecl {
-	var tud FunctionDecl
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			tud.id = v.(string)
-		case "kind":
-			tud.kind = v.(string)
-		case "loc":
-			tud.loc = convertSourceLocation(v)
-		case "range":
-			tud.range1 = convertSourceRange(v)
-		case "type":
-			tud.type1 = convertTypeClang(v)
-		case "name":
-			tud.name = v.(string)
-		case "mangledName":
-			tud.mangledName = v.(string)
-		case "storageClass":
-			tud.storageClass = v.(string)
-		case "isUsed":
-			tud.isUsed = v.(bool)
-		case "inner":
-			tud.inner = convertInnerNodes(v)
-		default:
-			fmt.Printf("[DBG]Unknown [%v]:%v in FunctionDecl\n", k, v)
-		}
-	}
-
-	//fmt.Printf("[DBG][FunctionDecl]%+v\n", tud)
-	return &tud
-}
-
-func convertParmVarDecl(content interface{}) *ParmVarDecl {
-	var tud ParmVarDecl
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			tud.id = v.(string)
-		case "kind":
-			tud.kind = v.(string)
-		case "loc":
-			tud.loc = convertSourceLocation(v)
-		case "range":
-			tud.range1 = convertSourceRange(v)
-		case "type":
-			tud.type1 = convertTypeClang(v)
-		case "name":
-			tud.name = v.(string)
-		case "mangledName":
-			tud.mangledName = v.(string)
-		case "isUsed":
-			tud.isUsed = v.(bool)
-		case "inner":
-		// ignore
-		//tud.inner = convertInner(v)
-		default:
-			fmt.Printf("[DBG][ParmVarDecl]Unknown [%v]:%v\n", k, v)
-		}
-	}
-
-	//fmt.Printf("[DBG]%+v\n", tud)
-	return &tud
-}
-
-func convertIndirectFieldDecl(content interface{}) *IndirectFieldDecl {
-	var tud IndirectFieldDecl
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			tud.id = v.(string)
-		case "kind":
-			tud.kind = v.(string)
-		case "loc":
-			tud.loc = convertSourceLocation(v)
-		case "range":
-			tud.range1 = convertSourceRange(v)
-		case "inner":
-		// ignore
-		//tud.inner = convertInner(v)
-		default:
-			fmt.Printf("[DBG]Unknown [%v]:%v\n", k, v)
-		}
-	}
-
-	//fmt.Printf("[DBG]%+v\n", tud)
-	return &tud
-}
-
-func (p *TranslationUnitDecl) getKind() string {
-	return p.kind
-}
-
-func (p *TypedefDecl) getKind() string {
-	return p.kind
-}
-
-func (p *RecordDecl) getKind() string {
-	return p.kind
-}
-
-func (p *FieldDecl) getKind() string {
-	return p.kind
-}
-
-func (p *VarDecl) getKind() string {
-	return p.kind
-}
-
-func (p *FunctionDecl) getKind() string {
-	return p.kind
-}
-
-func (p *ParmVarDecl) getKind() string {
-	return p.kind
-}
-
-func (p *IndirectFieldDecl) getKind() string {
-	return p.kind
-}
-
-func convertCompoundStmt(content interface{}) *CompoundStmt {
-	var inst CompoundStmt
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			inst.id = v.(string)
-		case "kind":
-			inst.kind = v.(string)
-		case "range":
-			inst.range1 = convertSourceRange(v)
-		case "inner":
-			// ignore
-			inst.inner = convertInnerNodes(v)
-		default:
-			fmt.Printf("[DBG][CompoundStmt]Unknown [%v]:%v\n", k, v)
-		}
-	}
-
-	//fmt.Printf("[DBG][CompoundStmt]%+v\n", inst)
-	return &inst
-}
-
-func convertDeclStmt(content interface{}) *DeclStmt {
-	var inst DeclStmt
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			inst.id = v.(string)
-		case "kind":
-			inst.kind = v.(string)
-		case "range":
-			inst.range1 = convertSourceRange(v)
-		case "inner":
-			// ignore
-			inst.inner = convertInnerNodes(v)
-		default:
-			fmt.Printf("[DBG][CompoundStmt]Unknown [%v]:%v\n", k, v)
-		}
-	}
-
-	//fmt.Printf("[DBG][DeclStmt]%+v\n", inst)
-	return &inst
-}
-
-func convertForStmt(content interface{}) *ForStmt {
-	var inst ForStmt
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			inst.id = v.(string)
-		case "kind":
-			inst.kind = v.(string)
-		case "range":
-			inst.range1 = convertSourceRange(v)
-		case "inner":
-			// ignore
-			inst.inner = convertInnerNodes(v)
-		default:
-			fmt.Printf("[DBG][CompoundStmt]Unknown [%v]:%v\n", k, v)
-		}
-	}
-
-	//fmt.Printf("[DBG][ForStmt]%+v\n", inst)
-	return &inst
-}
-
-func convertIfStmt(content interface{}) *IfStmt {
-	var inst IfStmt
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			inst.id = v.(string)
-		case "kind":
-			inst.kind = v.(string)
-		case "range":
-			inst.range1 = convertSourceRange(v)
-		case "inner":
-			// ignore
-			inst.inner = convertInnerNodes(v)
-		default:
-			fmt.Printf("[DBG][CompoundStmt]Unknown [%v]:%v\n", k, v)
-		}
-	}
-
-	//fmt.Printf("[DBG][IfStmt]%+v\n", inst)
-	return &inst
-}
-
-func convertReturnStmt(content interface{}) *ReturnStmt {
-	var inst ReturnStmt
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			inst.id = v.(string)
-		case "kind":
-			inst.kind = v.(string)
-		case "range":
-			inst.range1 = convertSourceRange(v)
-		case "inner":
-			// ignore
-			inst.inner = convertInnerNodes(v)
-		default:
-			fmt.Printf("[DBG][CompoundStmt]Unknown [%v]:%v\n", k, v)
-		}
-	}
-
-	//fmt.Printf("[DBG][ReturnStmt]%+v\n", inst)
-	return &inst
-}
-
-func convertBinaryOperator(content interface{}) *BinaryOperator {
-	var inst BinaryOperator
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			inst.id = v.(string)
-		case "kind":
-			inst.kind = v.(string)
-		case "range":
-			inst.range1 = convertSourceRange(v)
-		case "inner":
-			// ignore
-			inst.inner = convertInnerNodes(v)
-		default:
-			fmt.Printf("[DBG][BinaryOperator]Unknown [%v]:%v\n", k, v)
-		}
-	}
-
-	//fmt.Printf("[DBG][BinaryOperator]%+v\n", inst)
-	return &inst
-}
-
-func convertUnaryOperator(content interface{}) *UnaryOperator {
-	var inst UnaryOperator
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			inst.id = v.(string)
-		case "kind":
-			inst.kind = v.(string)
-		case "range":
-			inst.range1 = convertSourceRange(v)
-		case "inner":
-			// ignore
-			inst.inner = convertInnerNodes(v)
-		default:
-			fmt.Printf("[DBG][UnaryOperator]Unknown [%v]:%v\n", k, v)
-		}
-	}
-
-	//fmt.Printf("[DBG][UnaryOperator]%+v\n", inst)
-	return &inst
-}
-
-func convertCompoundAssignOperator(content interface{}) *CompoundAssignOperator {
-	var inst CompoundAssignOperator
-	varmap := content.(map[string]interface{})
-	for k, v := range varmap {
-		switch k {
-		case "id":
-			inst.id = v.(string)
-		case "kind":
-			inst.kind = v.(string)
-		case "range":
-			inst.range1 = convertSourceRange(v)
-		case "inner":
-			// ignore
-			inst.inner = convertInnerNodes(v)
-		default:
-			fmt.Printf("[DBG][CompoundAssignOperator]Unknown [%v]:%v\n", k, v)
-		}
-	}
-
-	//fmt.Printf("[DBG][CompoundAssignOperator]%+v\n", inst)
-	return &inst
-}
-
 func convertNoThrowAttr(content interface{}) *NoThrowAttr {
-	return nil
+	var inst NoThrowAttr
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "implicit":
+			inst.implicit = v.(bool)
+		case "inherited":
+			inst.inherited = v.(bool)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		default:
+			fmt.Printf("[DBG][NoThrowAttr]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	//fmt.Printf("[DBG][NoThrowAttr]%+v\n", inst)
+	return &inst
 }
 
 func convertNonNullAttr(content interface{}) *NonNullAttr {
-	return nil
+	var inst NonNullAttr
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "implicit":
+			inst.implicit = v.(bool)
+		case "inherited":
+			inst.inherited = v.(bool)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		default:
+			fmt.Printf("[DBG][NonNullAttr]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	//fmt.Printf("[DBG][NonNullAttr]%+v\n", inst)
+	return &inst
 }
 
-func convertImplicitCastExpr(content interface{}) *ImplicitCastExpr {
-	return nil
+func convertConstAttr(content interface{}) *ConstAttr {
+	var inst ConstAttr
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "implicit":
+			inst.implicit = v.(bool)
+		case "inherited":
+			inst.inherited = v.(bool)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		default:
+			fmt.Printf("[DBG][ConstAttr]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	return &inst
 }
 
-func convertCallExpr(content interface{}) *CallExpr {
-	return nil
+func convertPureAttr(content interface{}) *PureAttr {
+	var inst PureAttr
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "implicit":
+			inst.implicit = v.(bool)
+		case "inherited":
+			inst.inherited = v.(bool)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		default:
+			fmt.Printf("[DBG][PureAttr]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	return &inst
+}
+
+func convertRestrictAttr(content interface{}) *RestrictAttr {
+	var inst RestrictAttr
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "implicit":
+			inst.implicit = v.(bool)
+		case "inherited":
+			inst.inherited = v.(bool)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		default:
+			fmt.Printf("[DBG][RestrictAttr]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	return &inst
+}
+
+func convertFormatAttr(content interface{}) *FormatAttr {
+	var inst FormatAttr
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "implicit":
+			inst.implicit = v.(bool)
+		case "inherited":
+			inst.inherited = v.(bool)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		default:
+			fmt.Printf("[DBG][FormatAttr]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	return &inst
+}
+
+func convertAsmLabelAttr(content interface{}) *AsmLabelAttr {
+	var inst AsmLabelAttr
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "implicit":
+			inst.implicit = v.(bool)
+		case "inherited":
+			inst.inherited = v.(bool)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		default:
+			fmt.Printf("[DBG][AsmLabelAttr]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	return &inst
+}
+
+func convertBuiltinAttr(content interface{}) *BuiltinAttr {
+	var inst BuiltinAttr
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "implicit":
+			inst.implicit = v.(bool)
+		case "inherited":
+			inst.inherited = v.(bool)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		default:
+			fmt.Printf("[DBG][BuiltinAttr]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	return &inst
+}
+
+func convertWarnUnusedResultAttr(content interface{}) *WarnUnusedResultAttr {
+	var inst WarnUnusedResultAttr
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "implicit":
+			inst.implicit = v.(bool)
+		case "inherited":
+			inst.inherited = v.(bool)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		default:
+			fmt.Printf("[DBG][WarnUnusedResultAttr]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	return &inst
+}
+
+type LiteralParam struct {
+	NodeParam
+	valueCategory string
+}
+
+type IntegerLiteral struct {
+	LiteralParam
+	value1 string
+}
+
+type CharacterLiteral struct {
+	LiteralParam
+	value1 float64 // TODO switch value type
+}
+
+type StringLiteral struct {
+	LiteralParam
+	value1 string
+}
+
+func convertIntegerLiteral(content interface{}) *IntegerLiteral {
+	var inst IntegerLiteral
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		case "inner":
+			inst.inner = convertInnerNodes(v)
+		case "type":
+			inst.type1 = convertTypeClang(v)
+		case "valueCategory":
+			inst.valueCategory = v.(string)
+		case "value":
+			inst.value1 = v.(string)
+		default:
+			fmt.Printf("[DBG][IntegerLiteral]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	//fmt.Printf("[DBG][IntegerLiteral]%+v\n", inst)
+	return &inst
+}
+
+func convertCharacterLiteral(content interface{}) *CharacterLiteral {
+	var inst CharacterLiteral
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		case "inner":
+			inst.inner = convertInnerNodes(v)
+		case "type":
+			inst.type1 = convertTypeClang(v)
+		case "valueCategory":
+			inst.valueCategory = v.(string)
+		case "value":
+			inst.value1 = v.(float64) // ?
+		default:
+			fmt.Printf("[DBG][CharacterLiteral]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	//fmt.Printf("[DBG][CharacterLiteral]%+v\n", inst)
+	return &inst
+}
+
+func convertStringLiteral(content interface{}) *StringLiteral {
+	var inst StringLiteral
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		case "inner":
+			inst.inner = convertInnerNodes(v)
+		case "type":
+			inst.type1 = convertTypeClang(v)
+		case "valueCategory":
+			inst.valueCategory = v.(string)
+		case "value":
+			inst.value1 = v.(string) // ?
+		default:
+			fmt.Printf("[DBG][StringLiteral]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	//fmt.Printf("[DBG][StringLiteral]%+v\n", inst)
+	return &inst
 }
 
 // https://clang.llvm.org/doxygen/classclang_1_1Type.html
 type TypeClang struct {
-	qtype      *QualType
-	sugerqtype *QualType
+	qtype           *QualType
+	sugerqtype      *QualType
+	typeAliasDeclId string // point to another id
 }
 
 func (p *TypeClang) dump() {
@@ -624,6 +511,8 @@ func convertTypeClang(content interface{}) *TypeClang {
 			tc.qtype.typestr = v.(string)
 		case "desugaredQualType":
 			tc.sugerqtype.typestr = v.(string)
+		case "typeAliasDeclId":
+			tc.typeAliasDeclId = v.(string)
 		default:
 			fmt.Printf("[DBG][TypeClang]Unknown [%v]:%v\n", k, v)
 		}
@@ -632,16 +521,22 @@ func convertTypeClang(content interface{}) *TypeClang {
 	return &tc
 }
 
-// https://clang.llvm.org/doxygen/classclang_1_1DeclContext.html
-type DeclContext struct {
+type IncludedFrom struct {
+	fromfile string
 }
 
-// https://clang.llvm.org/doxygen/classclang_1_1Stmt.html
-type Stmt struct {
-}
-
-// https://clang.llvm.org/doxygen/classclang_1_1SourceLocation.html
-type SourceLocation struct {
+func convertIncludedFrom(content interface{}) *IncludedFrom {
+	var inst IncludedFrom
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "file":
+			inst.fromfile = v.(string)
+		default:
+			fmt.Printf("[DBG][IncludedFrom]Unknown [%v]:%v\n", k, v)
+		}
+	}
+	return &inst
 }
 
 // https://clang.llvm.org/doxygen/classclang_1_1SourceRange.html
@@ -670,108 +565,56 @@ func (p *SourceRange) isValid() bool {
 	return true
 }
 
-type TypedefDecl struct {
-	Decl
-	type1       *TypeClang
-	isImplicit  bool
-	name        string
-	mangledName string
-	init1       string
-	isUsed      bool
-}
-
-type FunctionDecl struct {
-	Decl
-	mangledName  string
-	storageClass string
-	name         string
-	type1        *TypeClang // ?
-	isUsed       bool
-	inner        []ClangNode // Actual type?
-}
-
 type BuiltinType struct{}
 type RecordType struct{}
-type RecordDecl struct {
-	Decl
-	mangledName string
-	isUsed      bool
-}
 type PointerType struct{}
 type ConstantArrayType struct{}
 type TypedefType struct{}
-type FieldDecl struct{ Decl }
 type ElaboratedType struct{}
-type VarDecl struct{ Decl }
 
-type ParmVarDecl struct {
-	Decl
-	mangledName string
-	name        string
-	type1       *TypeClang // ?
-	isUsed      bool
+type AttrParam struct {
+	id        string
+	range1    *SourceRange // "range" is a keyword
+	kind      string
+	implicit  bool // ?
+	inherited bool // ?
 }
-type NoThrowAttr struct{}
-type RestrictAttr struct{}
-type BuiltinAttr struct{}
-type FormatAttr struct{}
-type AsmLabelAttr struct{}
-type ConstAttr struct{}
-type PureAttr struct{}
-type NonNullAttr struct{}
+
+type NoThrowAttr struct {
+	AttrParam
+}
+type RestrictAttr struct {
+	AttrParam
+}
+type BuiltinAttr struct {
+	AttrParam
+}
+type FormatAttr struct {
+	AttrParam
+}
+type AsmLabelAttr struct {
+	AttrParam
+}
+type ConstAttr struct {
+	AttrParam
+}
+type PureAttr struct {
+	AttrParam
+}
+type NonNullAttr struct {
+	AttrParam
+}
 type ModeAttr struct{}
-type CompoundStmt struct {
-	kind   string
-	id     string
-	range1 *SourceRange // "range" is a keyword
-	inner  []ClangNode
-}
-type ReturnStmt struct {
-	kind   string
-	id     string
-	range1 *SourceRange // "range" is a keyword
-	inner  []ClangNode
-}
-type ParenExpr struct{}
-type CStyleCastExpr struct{}
 
-type BinaryOperator struct {
-	NodeParam
+type WarnUnusedResultAttr struct {
+	AttrParam
 }
-type ImplicitCastExpr struct{}
-type DeclRefExpr struct{}
-type IntegerLiteral struct{}
-type IndirectFieldDecl struct{ Decl }
-type WarnUnusedResultAttr struct{}
 type ParenType struct{}
 type FunctionProtoType struct{}
 
-type DeclStmt struct {
-	NodeParam
-}
-
-type ForStmt struct {
-	NodeParam
-}
-
-type UnaryOperator struct {
-	NodeParam
-}
-
-type CompoundAssignOperator struct {
-	NodeParam
-}
-type IfStmt struct {
-	NodeParam
-}
-type CallExpr struct{}
-type StringLiteral struct{}
-type ArraySubscriptExpr struct{}
-type CharacterLiteral struct{}
-
 type NodeParam struct {
-	kind   string
 	id     string
+	kind   string
 	range1 *SourceRange // "range" is a keyword
 	type1  *TypeClang   // ?
 	inner  []ClangNode
