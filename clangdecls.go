@@ -9,12 +9,11 @@ type ClangDecl interface {
 }
 
 type Decl struct {
-	sourceLoc *SourceLocation
-	sourceRg  *SourceRange
-	kind      string
-	id        string
-	loc       *SourceLocation
-	range1    *SourceRange // "range" is a keyword
+	sourceRg *SourceRange
+	kind     string
+	id       string
+	loc      *SourceLocation
+	range1   *SourceRange // "range" is a keyword
 }
 
 func (p *Decl) getSourceRange() *SourceRange {
@@ -43,6 +42,11 @@ type TypedefDecl struct {
 }
 
 func (p *TypedefDecl) t2go() string {
+	if p.isImplicit {
+		return ""
+	}
+
+	// TODO
 	return ""
 }
 
@@ -174,9 +178,25 @@ func (p *TranslationUnitDecl) t2go() string {
 }
 
 func (p *RecordDecl) t2go() string {
-	return ""
+	if p.isSystemDecl() {
+		return ""
+	}
+	if p.mangledName == "" {
+		return ""
+	}
+	return p.mangledName + "!!!"
 }
+
+func (p *RecordDecl) isSystemDecl() bool {
+	if p.loc == nil {
+		return true
+	}
+
+	return len(p.loc.file1) == 0
+}
+
 func (p *FieldDecl) t2go() string {
+	panic("NoImpl")
 	return ""
 }
 
@@ -186,6 +206,7 @@ func (p *VarDecl) t2go() string {
 }
 
 func (p *IndirectFieldDecl) t2go() string {
+	panic("NoImpl")
 	return ""
 }
 

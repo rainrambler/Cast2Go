@@ -36,14 +36,16 @@ type PureAttr struct {
 type NonNullAttr struct {
 	AttrParam
 }
-type ModeAttr struct{}
+type ModeAttr struct {
+	AttrParam
+}
 
 type WarnUnusedResultAttr struct {
 	AttrParam
 }
 
 func (p *NoThrowAttr) t2go() string {
-	return ""
+	return "" // not valid in Go
 }
 
 func (p *RestrictAttr) t2go() string {
@@ -67,7 +69,7 @@ func (p *ConstAttr) t2go() string {
 }
 
 func (p *PureAttr) t2go() string {
-	return ""
+	return "" // not valid in Go?
 }
 
 func (p *NonNullAttr) t2go() string {

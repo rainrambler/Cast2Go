@@ -7,7 +7,8 @@ import (
 
 func main() {
 	//jc, _ := parseFile(`D:\tmp\sqlite\astdemo\astres.json`)
-	jc, _ := parseFile(`astdemo.json`)
+	//jc, _ := parseFile(`astdemo.json`)
+	jc, _ := parseFile(`astqoi2.json`)
 	fmt.Println("================")
 	//iterContent(jc.Data)
 	var ac AstC

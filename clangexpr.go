@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 )
 
 func convertImplicitCastExpr(content interface{}) *ImplicitCastExpr {
@@ -180,22 +181,6 @@ type CallExpr struct {
 	ExprParam
 }
 
-func (p *CallExpr) t2goOld() string {
-
-	if len(p.inner) == 0 {
-		return ""
-	}
-
-	s := ""
-
-	for _, nd := range p.inner {
-		s += nd.t2go()
-	}
-
-	//s += EnterStr
-	return s
-}
-
 func (p *CallExpr) t2go() string {
 	num := len(p.inner)
 	if num == 0 {
@@ -258,6 +243,10 @@ func (p *ImplicitCastExpr) t2go() string {
 }
 
 func (p *DeclRefExpr) t2go() string {
+	if p.referencedDecl == nil {
+		log.Printf("[DBG][DeclRefExpr]Empty ref decl in %+v!\n", p)
+		return ""
+	}
 	switch p.referencedDecl.(type) {
 	case *ParmVarDecl:
 		decl := p.referencedDecl.(*ParmVarDecl)
