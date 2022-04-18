@@ -292,3 +292,26 @@ func convertWarnUnusedResultAttr(content interface{}) *WarnUnusedResultAttr {
 
 	return &inst
 }
+
+func convertModeAttr(content interface{}) *ModeAttr {
+	var inst ModeAttr
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "implicit":
+			inst.implicit = v.(bool)
+		case "inherited":
+			inst.inherited = v.(bool)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		default:
+			fmt.Printf("[DBG][ModeAttr]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	return &inst
+}

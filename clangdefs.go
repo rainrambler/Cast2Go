@@ -120,6 +120,8 @@ func convertNode(content interface{}) ClangNode {
 		return convertConstAttr(content)
 	case "FormatAttr":
 		return convertFormatAttr(content)
+	case "ModeAttr":
+		return convertModeAttr(content)
 	case "NonNullAttr":
 		return convertNonNullAttr(content)
 	case "NoThrowAttr":
@@ -136,18 +138,26 @@ func convertNode(content interface{}) ClangNode {
 		return convertUnaryOperator(content)
 	case "CompoundAssignOperator":
 		return convertCompoundAssignOperator(content)
+	case "CompoundLiteralExpr":
+		return convertCompoundLiteralExpr(content)
 	case "ArraySubscriptExpr":
 		return convertArraySubscriptExpr(content)
-	case "ImplicitCastExpr":
-		return convertImplicitCastExpr(content)
 	case "CallExpr":
 		return convertCallExpr(content)
 	case "CStyleCastExpr":
 		return convertCStyleCastExpr(content)
 	case "DeclRefExpr":
 		return convertDeclRefExpr(content)
+	case "ImplicitCastExpr":
+		return convertImplicitCastExpr(content)
+	case "InitListExpr":
+		return convertInitListExpr(content)
+	case "MemberExpr":
+		return convertMemberExpr(content)
 	case "ParenExpr":
 		return convertParenExpr(content)
+	case "UnaryExprOrTypeTraitExpr":
+		return convertUnaryExprOrTypeTraitExpr(content)
 	case "IntegerLiteral":
 		return convertIntegerLiteral(content)
 	case "CharacterLiteral":
@@ -257,6 +267,18 @@ func convertIncludedFrom(content interface{}) *IncludedFrom {
 		}
 	}
 	return &inst
+}
+
+func (p *IncludedFrom) isFromSystem() bool {
+	return isSystemPath(p.fromfile)
+}
+
+func isSystemPath(filepath string) bool {
+	if filepath == "" {
+		return false
+	}
+	return strings.HasPrefix(filepath, `/usr`) ||
+		strings.HasPrefix(filepath, `/include`)
 }
 
 // https://clang.llvm.org/doxygen/classclang_1_1SourceRange.html

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 )
 
 type ClangDecl interface {
@@ -74,6 +75,16 @@ func (p *FunctionDecl) dump() {
 }
 
 func (p *FunctionDecl) t2go() string {
+	if !p.hasValidFileLocation() && (p.name != "main") {
+		log.Printf("[DBG]System Func: %v\n", p.name)
+		return ""
+	}
+
+	if !p.hasStmt() {
+		// forword declaration
+		return ""
+	}
+
 	s := ""
 	fstart := fmt.Sprintf("func %s (", p.name)
 	s += fstart
@@ -93,7 +104,6 @@ func (p *FunctionDecl) t2go() string {
 
 		pvd := p.inner[pos] // the first should be ParmVarDecl
 		if isParmVarDecl(pvd) {
-			// TODO impl
 			decl := pvd.(*ParmVarDecl)
 			s += decl.t2go() + ","
 			pos++
@@ -121,10 +131,51 @@ func (p *FunctionDecl) t2go() string {
 	return s
 }
 
+func (p *FunctionDecl) hasValidFileLocation() bool {
+	if p.loc == nil {
+		return false
+	}
+
+	if p.storageClass == "extern" {
+		return false
+	}
+
+	if isSystemPath(p.loc.file1) {
+		return false
+	}
+
+	if (p.loc.includedFrom != nil) && p.loc.includedFrom.isFromSystem() {
+		return false
+	}
+
+	return true
+}
+
+func (p *FunctionDecl) hasStmt() bool {
+	for _, nd := range p.inner {
+		switch nd.(type) {
+		case *CompoundStmt, *DeclStmt, *ForStmt, *IfStmt, *ReturnStmt:
+			return true
+		default:
+		}
+	}
+	return false
+}
+
+func isStmt(v ClangNode) bool {
+	switch v.(type) {
+	case *ParmVarDecl:
+		//fmt.Printf("[DBG]PVD: %+v\n", v)
+		return true
+	default:
+		return false
+	}
+}
+
 func isParmVarDecl(v ClangNode) bool {
 	switch v.(type) {
 	case *ParmVarDecl:
-		fmt.Printf("[DBG]PVD: %+v\n", v)
+		//fmt.Printf("[DBG]PVD: %+v\n", v)
 		return true
 	default:
 		return false

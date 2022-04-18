@@ -5,6 +5,75 @@ import (
 	"log"
 )
 
+type ExprParam struct {
+	NodeParam
+	valueCategory string
+}
+
+type ParenExpr struct {
+	ExprParam
+}
+type CStyleCastExpr struct {
+	ExprParam
+}
+
+type ImplicitCastExpr struct {
+	ExprParam
+	castKind string
+}
+type DeclRefExpr struct {
+	ExprParam
+	referencedDecl ClangNode
+}
+
+// Represents a function call (C99 6.5.2.2, C++ [expr.call]).
+// https://clang.llvm.org/doxygen/classclang_1_1CallExpr.html
+type CallExpr struct {
+	ExprParam
+}
+
+func (p *CallExpr) t2go() string {
+	num := len(p.inner)
+	if num == 0 {
+		return ""
+	}
+
+	s := ""
+
+	// the first is func name
+	s += p.inner[0].t2go() + "("
+
+	// the others are parameters
+	for i := 1; i < num; i++ {
+		nd := p.inner[i]
+		s += nd.t2go() + ","
+	}
+
+	s = RemoveLastSubStr(s, ",")
+	s += ")"
+	return s
+}
+
+type ArraySubscriptExpr struct {
+	ExprParam
+}
+
+type CompoundLiteralExpr struct {
+	ExprParam
+}
+
+type InitListExpr struct {
+	ExprParam
+}
+
+type MemberExpr struct {
+	ExprParam
+}
+
+type UnaryExprOrTypeTraitExpr struct {
+	ExprParam
+}
+
 func convertImplicitCastExpr(content interface{}) *ImplicitCastExpr {
 	var inst ImplicitCastExpr
 	varmap := content.(map[string]interface{})
@@ -159,87 +228,155 @@ func convertArraySubscriptExpr(content interface{}) *ArraySubscriptExpr {
 	return &inst
 }
 
-type ParenExpr struct {
-	ExprParam
-}
-type CStyleCastExpr struct {
-	ExprParam
-}
-
-type ImplicitCastExpr struct {
-	ExprParam
-	castKind string
-}
-type DeclRefExpr struct {
-	ExprParam
-	referencedDecl ClangNode
-}
-
-// Represents a function call (C99 6.5.2.2, C++ [expr.call]).
-// https://clang.llvm.org/doxygen/classclang_1_1CallExpr.html
-type CallExpr struct {
-	ExprParam
-}
-
-func (p *CallExpr) t2go() string {
-	num := len(p.inner)
-	if num == 0 {
-		return ""
+func convertCompoundLiteralExpr(content interface{}) *CompoundLiteralExpr {
+	var inst CompoundLiteralExpr
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		case "type":
+			inst.type1 = convertTypeClang(v)
+		case "valueCategory":
+			inst.valueCategory = v.(string)
+		case "inner":
+			inst.inner = convertInnerNodes(v)
+		default:
+			fmt.Printf("[DBG][CompoundLiteralExpr]Unknown [%v]:%v\n", k, v)
+		}
 	}
 
-	s := ""
+	return &inst
+}
 
-	// the first is func name
-	s += p.inner[0].t2go() + "("
-
-	// the others are parameters
-	for i := 1; i < num; i++ {
-		nd := p.inner[i]
-		s += nd.t2go() + ","
+func convertInitListExpr(content interface{}) *InitListExpr {
+	var inst InitListExpr
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		case "type":
+			inst.type1 = convertTypeClang(v)
+		case "valueCategory":
+			inst.valueCategory = v.(string)
+		case "inner":
+			inst.inner = convertInnerNodes(v)
+		default:
+			fmt.Printf("[DBG][InitListExpr]Unknown [%v]:%v\n", k, v)
+		}
 	}
 
-	s = RemoveLastSubStr(s, ",")
-	s += ")"
-	return s
+	return &inst
 }
 
-type ArraySubscriptExpr struct {
-	ExprParam
+func convertMemberExpr(content interface{}) *MemberExpr {
+	var inst MemberExpr
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		case "type":
+			inst.type1 = convertTypeClang(v)
+		case "valueCategory":
+			inst.valueCategory = v.(string)
+		case "inner":
+			inst.inner = convertInnerNodes(v)
+		default:
+			fmt.Printf("[DBG][MemberExpr]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	return &inst
 }
 
-type ExprParam struct {
-	NodeParam
-	valueCategory string
+func convertUnaryExprOrTypeTraitExpr(content interface{}) *UnaryExprOrTypeTraitExpr {
+	var inst UnaryExprOrTypeTraitExpr
+	varmap := content.(map[string]interface{})
+	for k, v := range varmap {
+		switch k {
+		case "id":
+			inst.id = v.(string)
+		case "kind":
+			inst.kind = v.(string)
+		case "range":
+			inst.range1 = convertSourceRange(v)
+		case "type":
+			inst.type1 = convertTypeClang(v)
+		case "valueCategory":
+			inst.valueCategory = v.(string)
+		case "inner":
+			inst.inner = convertInnerNodes(v)
+		default:
+			fmt.Printf("[DBG][UnaryExprOrTypeTraitExpr]Unknown [%v]:%v\n", k, v)
+		}
+	}
+
+	return &inst
 }
 
 func (p *ParenExpr) t2go() string {
-	if len(p.inner) != 1 {
-		fmt.Printf("[DBG][CStyleCastExpr]Format error: %+v!\n", p.inner)
+	switch len(p.inner) {
+	case 0:
 		return ""
+	case 1:
+		{
+			// Only one child?
+			return p.inner[0].t2go()
+		}
+	default:
+		{
+			fmt.Printf("[DBG][ParenExpr]Format error: %+v!\n", p.inner)
+			return ""
+		}
 	}
-
-	// Only one child?
-	return p.inner[0].t2go()
 }
 
 func (p *CStyleCastExpr) t2go() string {
-	if len(p.inner) != 1 {
-		fmt.Printf("[DBG][CStyleCastExpr]Format error: %+v!\n", p.inner)
+	switch len(p.inner) {
+	case 0:
 		return ""
+	case 1:
+		{
+			// Only one child?
+			return p.inner[0].t2go()
+		}
+	default:
+		{
+			fmt.Printf("[DBG][CStyleCastExpr]Format error: %+v!\n", p.inner)
+			return ""
+		}
 	}
-
-	// Only one child?
-	return p.inner[0].t2go()
 }
 
 func (p *ImplicitCastExpr) t2go() string {
-	if len(p.inner) != 1 {
-		fmt.Printf("[DBG][ImplicitCastExpr]Format error: %+v!\n", p.inner)
+	switch len(p.inner) {
+	case 0:
 		return ""
+	case 1:
+		{
+			// Only one child?
+			return p.inner[0].t2go()
+		}
+	default:
+		{
+			fmt.Printf("[DBG][ImplicitCastExpr]Format error: %+v!\n", p.inner)
+			return ""
+		}
 	}
-
-	// Only one child?
-	return p.inner[0].t2go()
 }
 
 func (p *DeclRefExpr) t2go() string {
@@ -263,14 +400,26 @@ func (p *DeclRefExpr) t2go() string {
 }
 
 func (p *ArraySubscriptExpr) t2go() string {
+	panic("noImpl")
 	return ""
 }
 
-func get_sum(num int) {
-	var i int
-	var sum int
-	for i = 0; i < num; i++ {
-		sum += i
-	}
+func (p *CompoundLiteralExpr) t2go() string {
+	panic("noImpl")
+	return ""
+}
 
+func (p *InitListExpr) t2go() string {
+	panic("noImpl")
+	return ""
+}
+
+func (p *MemberExpr) t2go() string {
+	panic("noImpl")
+	return ""
+}
+
+func (p *UnaryExprOrTypeTraitExpr) t2go() string {
+	panic("noImpl")
+	return ""
 }
