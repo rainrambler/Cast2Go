@@ -184,9 +184,10 @@ func isParmVarDecl(v ClangNode) bool {
 
 type RecordDecl struct {
 	Decl
-	mangledName string
-	isUsed      bool
-	tagUsed     string
+	mangledName        string
+	isUsed             bool
+	tagUsed            string
+	completeDefinition bool
 }
 type FieldDecl struct{ Decl }
 
@@ -324,7 +325,7 @@ func convertTypedefDecl(content interface{}) *TypedefDecl {
 		}
 	}
 
-	fmt.Printf("[DBG][TypedefDecl]%+v\n", tud)
+	//fmt.Printf("[DBG][TypedefDecl]%+v\n", tud)
 	return &tud
 }
 
@@ -347,6 +348,8 @@ func convertRecordDecl(content interface{}) *RecordDecl {
 			tud.tagUsed = v.(string)
 		case "isUsed":
 			tud.isUsed = v.(bool)
+		case "completeDefinition":
+			tud.completeDefinition = v.(bool)
 		default:
 			fmt.Printf("[DBG][RecordDecl]Unknown [%v]:%v\n", k, v)
 		}

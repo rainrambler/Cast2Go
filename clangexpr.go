@@ -32,28 +32,6 @@ type CallExpr struct {
 	ExprParam
 }
 
-func (p *CallExpr) t2go() string {
-	num := len(p.inner)
-	if num == 0 {
-		return ""
-	}
-
-	s := ""
-
-	// the first is func name
-	s += p.inner[0].t2go() + "("
-
-	// the others are parameters
-	for i := 1; i < num; i++ {
-		nd := p.inner[i]
-		s += nd.t2go() + ","
-	}
-
-	s = RemoveLastSubStr(s, ",")
-	s += ")"
-	return s
-}
-
 type ArraySubscriptExpr struct {
 	ExprParam
 }
@@ -68,6 +46,9 @@ type InitListExpr struct {
 
 type MemberExpr struct {
 	ExprParam
+	name                 string
+	isArrow              bool
+	referencedMemberDecl string
 }
 
 type UnaryExprOrTypeTraitExpr struct {
@@ -293,6 +274,12 @@ func convertMemberExpr(content interface{}) *MemberExpr {
 			inst.type1 = convertTypeClang(v)
 		case "valueCategory":
 			inst.valueCategory = v.(string)
+		case "name":
+			inst.name = v.(string)
+		case "isArrow":
+			inst.isArrow = v.(bool)
+		case "referencedMemberDecl":
+			inst.referencedMemberDecl = v.(string)
 		case "inner":
 			inst.inner = convertInnerNodes(v)
 		default:
@@ -326,6 +313,28 @@ func convertUnaryExprOrTypeTraitExpr(content interface{}) *UnaryExprOrTypeTraitE
 	}
 
 	return &inst
+}
+
+func (p *CallExpr) t2go() string {
+	num := len(p.inner)
+	if num == 0 {
+		return ""
+	}
+
+	s := ""
+
+	// the first is func name
+	s += p.inner[0].t2go() + "("
+
+	// the others are parameters
+	for i := 1; i < num; i++ {
+		nd := p.inner[i]
+		s += nd.t2go() + ","
+	}
+
+	s = RemoveLastSubStr(s, ",")
+	s += ")"
+	return s
 }
 
 func (p *ParenExpr) t2go() string {
@@ -400,8 +409,15 @@ func (p *DeclRefExpr) t2go() string {
 }
 
 func (p *ArraySubscriptExpr) t2go() string {
-	panic("noImpl")
-	return ""
+	num := len(p.inner)
+	if num != 2 {
+		log.Printf("[DBG][ArraySubscriptExpr]Format error: %+v\n", p)
+		return ""
+	}
+
+	// the first is func name
+	s := p.inner[0].t2go() + "[" + p.inner[1].t2go() + "]"
+	return s
 }
 
 func (p *CompoundLiteralExpr) t2go() string {
@@ -415,8 +431,15 @@ func (p *InitListExpr) t2go() string {
 }
 
 func (p *MemberExpr) t2go() string {
-	panic("noImpl")
-	return ""
+	num := len(p.inner)
+	if num != 1 {
+		log.Printf("[DBG][MemberExpr]Format error: %+v\n", p)
+		return ""
+	}
+
+	// the first is struct name
+	s := p.inner[0].t2go() + "." + p.name
+	return s
 }
 
 func (p *UnaryExprOrTypeTraitExpr) t2go() string {
