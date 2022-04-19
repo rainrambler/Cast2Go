@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	_ "log"
+	"log"
 )
 
 type ClangDecl interface {
@@ -96,7 +96,7 @@ func (p *FunctionDecl) t2go() string {
 	rettype := p.type1.getReturnType()
 
 	if len(p.inner) == 0 {
-		s += ") " + rettype + "{}"
+		s += ") " + rettype + LeftBraceStr + RightBraceStr
 		return s
 	}
 
@@ -119,8 +119,7 @@ func (p *FunctionDecl) t2go() string {
 	}
 
 	s = RemoveLastSubStr(s, CommaStr)
-	s += ") " + rettype + "{" + EnterStr
-	//s += ") {\n"
+	s += ") " + rettype + LeftBraceStr + EnterStr
 	for {
 		if pos >= len(p.inner) {
 			break
@@ -131,7 +130,7 @@ func (p *FunctionDecl) t2go() string {
 		pos++
 	}
 
-	s += "}" + EnterStr
+	s += RightBraceStr + EnterStr
 	return s
 }
 
@@ -210,7 +209,7 @@ type VarDecl struct {
 	isUsed       bool
 	name         string
 	mangledName  string
-	init1        string
+	init1        string // https://clang.llvm.org/doxygen/classclang_1_1VarDecl.html
 	storageClass string
 	type1        *TypeClang
 	inner        []ClangNode
@@ -275,12 +274,25 @@ func (p *VarDecl) t2go() string {
 	//return "var " + p.name + " " + p.type1.t2go() + EnterStr
 
 	s := "var " + p.name + " " + p.type1.t2go()
-	switch p.storageClass {
-	case "static":
-		return s + EnterStr
-	default:
-		return s
+	appendEnter := false
+
+	if p.storageClass == StaticStr {
+		appendEnter = true
 	}
+
+	// C-style initialization with assignment
+	if p.init1 != "c" {
+		return AppendSubStr(s, EnterStr, appendEnter)
+	}
+
+	if len(p.inner) != 1 {
+		log.Printf("[DBG][VarDecl]Unknown initialization: %+v\n", p)
+		return AppendSubStr(s, EnterStr, appendEnter)
+	}
+
+	s += "=" + p.inner[0].t2go()
+	s = AppendSubStr(s, EnterStr, true)
+	return s
 }
 
 func (p *IndirectFieldDecl) t2go() string {
@@ -308,12 +320,6 @@ func convertTranslationUnitDecl(content interface{}) *TranslationUnitDecl {
 		}
 	}
 
-	//fmt.Printf("[DBG]%+v\n", tud)
-	/*
-		for _, v := range tud.inner {
-			fmt.Printf("[DBG]%+v\n", v)
-		}
-	*/
 	return &tud
 }
 
@@ -353,7 +359,6 @@ func convertTypedefDecl(content interface{}) *TypedefDecl {
 		}
 	}
 
-	//fmt.Printf("[DBG][TypedefDecl]%+v\n", tud)
 	return &tud
 }
 
@@ -391,7 +396,6 @@ func convertRecordDecl(content interface{}) *RecordDecl {
 		}
 	}
 
-	//fmt.Printf("[DBG]%+v\n", tud)
 	return &tud
 }
 
@@ -421,7 +425,6 @@ func convertFieldDecl(content interface{}) *FieldDecl {
 		}
 	}
 
-	//fmt.Printf("[DBG]%+v\n", tud)
 	return &tud
 }
 
@@ -457,7 +460,6 @@ func convertVarDecl(content interface{}) *VarDecl {
 		}
 	}
 
-	//fmt.Printf("[DBG]%+v\n", tud)
 	return &tud
 }
 
@@ -529,7 +531,6 @@ func convertParmVarDecl(content interface{}) *ParmVarDecl {
 		}
 	}
 
-	//fmt.Printf("[DBG]%+v\n", tud)
 	return &tud
 }
 
@@ -555,7 +556,6 @@ func convertIndirectFieldDecl(content interface{}) *IndirectFieldDecl {
 		}
 	}
 
-	//fmt.Printf("[DBG]%+v\n", tud)
 	return &tud
 }
 

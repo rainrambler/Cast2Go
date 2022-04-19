@@ -442,7 +442,7 @@ func (p *CompoundLiteralExpr) t2go() string {
 	}
 
 	// ?
-	s := "&" + p.type1.t2go() + "{" + p.inner[0].t2go() + "}"
+	s := "&" + p.type1.t2go() + LeftBraceStr + p.inner[0].t2go() + RightBraceStr
 	return s
 }
 

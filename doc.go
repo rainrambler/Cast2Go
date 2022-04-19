@@ -81,21 +81,21 @@ func iterContentLayer(content interface{}, layers int) {
 
 	case map[interface{}]interface{}:
 		val := content.(map[interface{}]interface{})
-		fmt.Println("{")
+		fmt.Println(LeftBraceStr)
 		for k, v := range val {
 			fmt.Printf("Key: [%v]\n", k)
 			iterContentLayer(v, layers-1)
 		}
-		fmt.Println("}")
+		fmt.Println(RightBraceStr)
 
 	case map[string]interface{}:
 		val := content.(map[string]interface{})
-		fmt.Println("{")
+		fmt.Println(LeftBraceStr)
 		for k, v := range val {
 			fmt.Printf("Key: [%v]\n", k)
 			iterContentLayer(v, layers-1)
 		}
-		fmt.Println("}")
+		fmt.Println(RightBraceStr)
 
 	case string:
 		fmt.Printf("sTr:[%s]\n", content.(string))
@@ -127,4 +127,11 @@ func RemoveLastSubStr(s, substr string) string {
 	} else {
 		return s
 	}
+}
+
+func AppendSubStr(s, substr string, shouldappened bool) string {
+	if !shouldappened {
+		return s
+	}
+	return s + substr
 }

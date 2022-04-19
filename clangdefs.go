@@ -6,8 +6,12 @@ import (
 )
 
 const (
-	EnterStr = "\n"
-	CommaStr = ","
+	EnterStr      = "\n"
+	CommaStr      = ","
+	StaticStr     = "static"
+	LeftBraceStr  = "{"
+	RightBraceStr = "}"
+	SemicolonStr  = ";"
 )
 
 type ClangNode interface {

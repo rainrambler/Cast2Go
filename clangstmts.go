@@ -113,9 +113,6 @@ func convertReturnStmt(content interface{}) *ReturnStmt {
 }
 
 // https://clang.llvm.org/doxygen/classclang_1_1Stmt.html
-type Stmt struct {
-}
-
 type CompoundStmt struct {
 	NodeParam
 }
@@ -142,16 +139,16 @@ func (p *ForStmt) t2go() string {
 
 	for _, nd := range p.inner {
 		switch nd.(type) {
-		case *BinaryOperator, *UnaryOperator:
-			s += nd.t2go() + ";"
+		case *BinaryOperator, *UnaryOperator, *CompoundAssignOperator:
+			s += nd.t2go() + SemicolonStr
 		default:
-			s = RemoveLastSubStr(s, ";")
-			s += "{\n"
+			s = RemoveLastSubStr(s, SemicolonStr)
+			s += LeftBraceStr + EnterStr
 			s += nd.t2go()
 		}
 	}
 
-	s += "}"
+	s += RightBraceStr
 	return s
 }
 
@@ -165,14 +162,14 @@ func (p *IfStmt) t2go() string {
 			s += nd.t2go()
 		default:
 			if !inited {
-				s += "{\n"
+				s += LeftBraceStr + EnterStr
 				inited = true
 			}
 			s += nd.t2go()
 		}
 	}
 
-	s += "\n}"
+	s += EnterStr + RightBraceStr
 	return s
 }
 
@@ -180,7 +177,6 @@ func (p *DeclStmt) t2go() string {
 	s := ""
 	for _, nd := range p.inner {
 		s += nd.t2go() + EnterStr
-		//s += nd.t2go()
 	}
 	return RemoveLastSubStr(s, EnterStr)
 }
