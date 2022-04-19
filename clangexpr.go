@@ -13,17 +13,21 @@ type ExprParam struct {
 type ParenExpr struct {
 	ExprParam
 }
+
 type CStyleCastExpr struct {
 	ExprParam
+	castKind string
 }
 
 type ImplicitCastExpr struct {
 	ExprParam
-	castKind string
+	castKind             string
+	isPartOfExplicitCast bool
 }
 type DeclRefExpr struct {
 	ExprParam
-	referencedDecl ClangNode
+	referencedDecl  ClangNode
+	nonOdrUseReason string
 }
 
 // Represents a function call (C99 6.5.2.2, C++ [expr.call]).
@@ -36,6 +40,7 @@ type ArraySubscriptExpr struct {
 	ExprParam
 }
 
+// eg: &(qoi_desc){.width = w, .height = h}
 type CompoundLiteralExpr struct {
 	ExprParam
 }
@@ -53,6 +58,7 @@ type MemberExpr struct {
 
 type UnaryExprOrTypeTraitExpr struct {
 	ExprParam
+	name string
 }
 
 func convertImplicitCastExpr(content interface{}) *ImplicitCastExpr {
@@ -72,6 +78,8 @@ func convertImplicitCastExpr(content interface{}) *ImplicitCastExpr {
 			inst.valueCategory = v.(string)
 		case "castKind":
 			inst.castKind = v.(string)
+		case "isPartOfExplicitCast":
+			inst.isPartOfExplicitCast = v.(bool)
 		case "inner":
 			inst.inner = convertInnerNodes(v)
 		default:
@@ -122,6 +130,8 @@ func convertDeclRefExpr(content interface{}) *DeclRefExpr {
 			inst.type1 = convertTypeClang(v)
 		case "valueCategory":
 			inst.valueCategory = v.(string)
+		case "nonOdrUseReason":
+			inst.nonOdrUseReason = v.(string)
 		case "referencedDecl":
 			inst.referencedDecl = convertNode(v)
 		case "inner":
@@ -168,6 +178,8 @@ func convertCStyleCastExpr(content interface{}) *CStyleCastExpr {
 			inst.id = v.(string)
 		case "kind":
 			inst.kind = v.(string)
+		case "castKind":
+			inst.castKind = v.(string)
 		case "range":
 			inst.range1 = convertSourceRange(v)
 		case "type":
@@ -305,6 +317,8 @@ func convertUnaryExprOrTypeTraitExpr(content interface{}) *UnaryExprOrTypeTraitE
 			inst.type1 = convertTypeClang(v)
 		case "valueCategory":
 			inst.valueCategory = v.(string)
+		case "name":
+			inst.name = v.(string)
 		case "inner":
 			inst.inner = convertInnerNodes(v)
 		default:
@@ -329,10 +343,10 @@ func (p *CallExpr) t2go() string {
 	// the others are parameters
 	for i := 1; i < num; i++ {
 		nd := p.inner[i]
-		s += nd.t2go() + ","
+		s += nd.t2go() + CommaStr
 	}
 
-	s = RemoveLastSubStr(s, ",")
+	s = RemoveLastSubStr(s, CommaStr)
 	s += ")"
 	return s
 }
@@ -421,13 +435,31 @@ func (p *ArraySubscriptExpr) t2go() string {
 }
 
 func (p *CompoundLiteralExpr) t2go() string {
-	panic("noImpl")
-	return ""
+	num := len(p.inner)
+	if num != 1 {
+		log.Printf("[DBG][CompoundLiteralExpr]Format error: %+v\n", p)
+		return ""
+	}
+
+	// ?
+	s := "&" + p.type1.t2go() + "{" + p.inner[0].t2go() + "}"
+	return s
 }
 
 func (p *InitListExpr) t2go() string {
-	panic("noImpl")
-	return ""
+	num := len(p.inner)
+	if num == 0 {
+		log.Printf("[DBG][InitListExpr]Format error: %+v\n", p)
+		return ""
+	}
+
+	s := ""
+	for _, nd := range p.inner {
+		s += nd.t2go() + CommaStr
+	}
+
+	s = RemoveLastSubStr(s, CommaStr)
+	return s
 }
 
 func (p *MemberExpr) t2go() string {
@@ -443,6 +475,13 @@ func (p *MemberExpr) t2go() string {
 }
 
 func (p *UnaryExprOrTypeTraitExpr) t2go() string {
-	panic("noImpl")
-	return ""
+	num := len(p.inner)
+	if num != 1 {
+		log.Printf("[DBG][UnaryExprOrTypeTraitExpr]Format error: %+v\n", p)
+		return ""
+	}
+
+	// the first is struct name
+	s := p.name + "(" + p.inner[0].t2go() + ")"
+	return s
 }

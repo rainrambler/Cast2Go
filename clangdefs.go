@@ -7,6 +7,7 @@ import (
 
 const (
 	EnterStr = "\n"
+	CommaStr = ","
 )
 
 type ClangNode interface {
@@ -19,12 +20,15 @@ type Node interface {
 
 // https://clang.llvm.org/doxygen/classclang_1_1SourceLocation.html
 type SourceLocation struct {
-	offset       int
-	line         int
-	col          int
-	tokLen       int
-	file1        string
-	includedFrom *IncludedFrom
+	offset              int
+	line                int
+	col                 int
+	tokLen              int
+	file1               string
+	isMacroArgExpansion bool
+	includedFrom        *IncludedFrom
+	spellingLoc         *SourceLocation
+	expansionLoc        *SourceLocation
 }
 
 func convertSourceLocation(content interface{}) *SourceLocation {
@@ -42,8 +46,14 @@ func convertSourceLocation(content interface{}) *SourceLocation {
 			inst.line = int(v.(float64))
 		case "file":
 			inst.file1 = v.(string)
+		case "isMacroArgExpansion":
+			inst.isMacroArgExpansion = v.(bool)
 		case "includedFrom":
 			inst.includedFrom = convertIncludedFrom(v)
+		case "spellingLoc":
+			inst.spellingLoc = convertSourceLocation(v)
+		case "expansionLoc":
+			inst.expansionLoc = convertSourceLocation(v)
 		default:
 			fmt.Printf("[DBG][SourceLocation]Unknown [%v]:%v\n", k, v)
 		}
@@ -170,6 +180,10 @@ func convertNode(content interface{}) ClangNode {
 		return convertConstantArrayType(content)
 	case "ElaboratedType":
 		return convertElaboratedType(content)
+	case "FunctionProtoType":
+		return convertFunctionProtoType(content)
+	case "ParenType":
+		return convertParenType(content)
 	case "PointerType":
 		return convertPointerType(content)
 	case "QualType":

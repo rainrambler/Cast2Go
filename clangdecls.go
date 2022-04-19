@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	_ "log"
 )
 
 type ClangDecl interface {
@@ -10,15 +10,16 @@ type ClangDecl interface {
 }
 
 type Decl struct {
-	sourceRg *SourceRange
-	kind     string
-	id       string
-	loc      *SourceLocation
-	range1   *SourceRange // "range" is a keyword
+	NodeParam
+	//sourceRg *SourceRange
+	//kind     string
+	//id       string
+	loc *SourceLocation
+	//range1   *SourceRange // "range" is a keyword
 }
 
 func (p *Decl) getSourceRange() *SourceRange {
-	return p.sourceRg
+	return p.range1
 }
 
 // TODO real kind type?
@@ -36,6 +37,7 @@ type TypedefDecl struct {
 	name         string
 	mangledName  string
 	init1        string
+	previousDecl string
 	isUsed       bool
 	isReferenced bool
 	isImplicit   bool
@@ -59,6 +61,8 @@ type FunctionDecl struct {
 	type1        *TypeClang // ?
 	isUsed       bool
 	isImplicit   bool
+	inline       bool
+	variadic     bool
 	previousDecl string
 	inner        []ClangNode // Actual type?
 }
@@ -76,7 +80,7 @@ func (p *FunctionDecl) dump() {
 
 func (p *FunctionDecl) t2go() string {
 	if !p.hasValidFileLocation() && (p.name != "main") {
-		log.Printf("[DBG]System Func: %v\n", p.name)
+		//log.Printf("[DBG]System Func: %v\n", p.name)
 		return ""
 	}
 
@@ -105,7 +109,7 @@ func (p *FunctionDecl) t2go() string {
 		pvd := p.inner[pos] // the first should be ParmVarDecl
 		if isParmVarDecl(pvd) {
 			decl := pvd.(*ParmVarDecl)
-			s += decl.t2go() + ","
+			s += decl.t2go() + CommaStr
 			pos++
 		} else {
 			//otherType := reflect.TypeOf(pvd)
@@ -114,7 +118,7 @@ func (p *FunctionDecl) t2go() string {
 		}
 	}
 
-	s = RemoveLastSubStr(s, ",")
+	s = RemoveLastSubStr(s, CommaStr)
 	s += ") " + rettype + "{" + EnterStr
 	//s += ") {\n"
 	for {
@@ -184,21 +188,32 @@ func isParmVarDecl(v ClangNode) bool {
 
 type RecordDecl struct {
 	Decl
-	mangledName        string
-	isUsed             bool
-	tagUsed            string
-	completeDefinition bool
+	mangledName         string
+	name                string
+	isUsed              bool
+	tagUsed             string
+	completeDefinition  bool
+	parentDeclContextId string
+	previousDecl        string
 }
-type FieldDecl struct{ Decl }
+
+type FieldDecl struct {
+	Decl
+	name         string
+	isReferenced bool
+	isImplicit   bool
+	type1        *TypeClang
+}
 
 type VarDecl struct {
 	Decl
-	isUsed      bool
-	name        string
-	mangledName string
-	init1       string
-	type1       *TypeClang
-	inner       []ClangNode
+	isUsed       bool
+	name         string
+	mangledName  string
+	init1        string
+	storageClass string
+	type1        *TypeClang
+	inner        []ClangNode
 }
 
 type ParmVarDecl struct {
@@ -213,7 +228,11 @@ func (p ParmVarDecl) t2go() string {
 	return p.name + " " + p.type1.t2go()
 }
 
-type IndirectFieldDecl struct{ Decl }
+type IndirectFieldDecl struct {
+	Decl
+	isImplicit bool
+	name       string
+}
 
 type TranslationUnitDecl struct {
 	Decl
@@ -254,7 +273,14 @@ func (p *FieldDecl) t2go() string {
 
 func (p *VarDecl) t2go() string {
 	//return "var " + p.name + " " + p.type1.t2go() + EnterStr
-	return "var " + p.name + " " + p.type1.t2go()
+
+	s := "var " + p.name + " " + p.type1.t2go()
+	switch p.storageClass {
+	case "static":
+		return s + EnterStr
+	default:
+		return s
+	}
 }
 
 func (p *IndirectFieldDecl) t2go() string {
@@ -318,6 +344,8 @@ func convertTypedefDecl(content interface{}) *TypedefDecl {
 			tud.isReferenced = v.(bool)
 		case "mangledName":
 			tud.mangledName = v.(string)
+		case "previousDecl":
+			tud.previousDecl = v.(string)
 		case "inner":
 			tud.inner = convertInnerNodes(v)
 		default:
@@ -344,12 +372,20 @@ func convertRecordDecl(content interface{}) *RecordDecl {
 			tud.range1 = convertSourceRange(v)
 		case "mangledName":
 			tud.mangledName = v.(string)
+		case "name":
+			tud.name = v.(string)
 		case "tagUsed":
 			tud.tagUsed = v.(string)
 		case "isUsed":
 			tud.isUsed = v.(bool)
 		case "completeDefinition":
 			tud.completeDefinition = v.(bool)
+		case "parentDeclContextId":
+			tud.parentDeclContextId = v.(string)
+		case "previousDecl":
+			tud.previousDecl = v.(string)
+		case "inner":
+			tud.inner = convertInnerNodes(v)
 		default:
 			fmt.Printf("[DBG][RecordDecl]Unknown [%v]:%v\n", k, v)
 		}
@@ -368,10 +404,18 @@ func convertFieldDecl(content interface{}) *FieldDecl {
 			tud.id = v.(string)
 		case "kind":
 			tud.kind = v.(string)
+		case "isReferenced":
+			tud.isReferenced = v.(bool)
+		case "name":
+			tud.name = v.(string)
+		case "isImplicit":
+			tud.isImplicit = v.(bool)
 		case "loc":
 			tud.loc = convertSourceLocation(v)
 		case "range":
 			tud.range1 = convertSourceRange(v)
+		case "type":
+			tud.type1 = convertTypeClang(v)
 		default:
 			fmt.Printf("[DBG][FieldDecl]Unknown [%v]:%v\n", k, v)
 		}
@@ -398,6 +442,8 @@ func convertVarDecl(content interface{}) *VarDecl {
 			tud.mangledName = v.(string)
 		case "name":
 			tud.name = v.(string)
+		case "storageClass":
+			tud.storageClass = v.(string)
 		case "isUsed":
 			tud.isUsed = v.(bool)
 		case "type":
@@ -442,6 +488,10 @@ func convertFunctionDecl(content interface{}) *FunctionDecl {
 			tud.isUsed = v.(bool)
 		case "isImplicit":
 			tud.isImplicit = v.(bool)
+		case "inline":
+			tud.inline = v.(bool)
+		case "variadic":
+			tud.variadic = v.(bool)
 		case "inner":
 			tud.inner = convertInnerNodes(v)
 		default:
@@ -449,7 +499,7 @@ func convertFunctionDecl(content interface{}) *FunctionDecl {
 		}
 	}
 
-	tud.dump()
+	//tud.dump()
 	return &tud
 }
 
@@ -492,10 +542,14 @@ func convertIndirectFieldDecl(content interface{}) *IndirectFieldDecl {
 			tud.id = v.(string)
 		case "kind":
 			tud.kind = v.(string)
+		case "isImplicit":
+			tud.isImplicit = v.(bool)
 		case "loc":
 			tud.loc = convertSourceLocation(v)
 		case "range":
 			tud.range1 = convertSourceRange(v)
+		case "name":
+			tud.name = v.(string)
 		default:
 			fmt.Printf("[DBG][IndirectFieldDecl]Unknown [%v]:%v\n", k, v)
 		}

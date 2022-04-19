@@ -179,9 +179,10 @@ func (p *IfStmt) t2go() string {
 func (p *DeclStmt) t2go() string {
 	s := ""
 	for _, nd := range p.inner {
-		s += nd.t2go()
+		s += nd.t2go() + EnterStr
+		//s += nd.t2go()
 	}
-	return s
+	return RemoveLastSubStr(s, EnterStr)
 }
 
 func (p *ReturnStmt) t2go() string {
@@ -197,5 +198,5 @@ func (p *CompoundStmt) t2go() string {
 	for _, nd := range p.inner {
 		s += nd.t2go() + EnterStr
 	}
-	return s
+	return RemoveLastSubStr(s, EnterStr)
 }
