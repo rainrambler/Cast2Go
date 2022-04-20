@@ -173,6 +173,9 @@ func (p *IfStmt) t2go() string {
 
 	if p.hasElse {
 		if inited {
+			//if !strings.HasSuffix(s, RightBraceStr) {
+			s += EnterStr + RightBraceStr
+			//}
 			s += " else " + LeftBraceStr + EnterStr
 			s += p.inner[size-1].t2go() // The last should be "else" stmt?
 		} else {
