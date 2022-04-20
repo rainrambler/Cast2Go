@@ -156,7 +156,9 @@ func (p *IfStmt) t2go() string {
 	s := "if "
 
 	inited := false
-	for _, nd := range p.inner {
+	size := len(p.inner)
+	for i := 0; i < size-1; i++ {
+		nd := p.inner[i]
 		switch nd.(type) {
 		case *BinaryOperator, *UnaryOperator:
 			s += nd.t2go()
@@ -167,6 +169,21 @@ func (p *IfStmt) t2go() string {
 			}
 			s += nd.t2go()
 		}
+	}
+
+	if p.hasElse {
+		if inited {
+			s += " else " + LeftBraceStr + EnterStr
+			s += p.inner[size-1].t2go() // The last should be "else" stmt?
+		} else {
+			s += LeftBraceStr + EnterStr
+			inited = true
+		}
+	} else {
+		if !inited {
+			s += LeftBraceStr + EnterStr
+		}
+		s += p.inner[size-1].t2go()
 	}
 
 	s += EnterStr + RightBraceStr

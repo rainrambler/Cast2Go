@@ -80,7 +80,6 @@ func (p *FunctionDecl) dump() {
 
 func (p *FunctionDecl) t2go() string {
 	if !p.hasValidFileLocation() && (p.name != "main") {
-		//log.Printf("[DBG]System Func: %v\n", p.name)
 		return ""
 	}
 
@@ -89,8 +88,19 @@ func (p *FunctionDecl) t2go() string {
 		return ""
 	}
 
+	fname, exists := gomap.funcmapping[p.name]
+	if !exists {
+		fname = p.name
+	}
+	if p.name == "free" {
+		log.Printf("[DBG]func [%s] to [%s]\n", p.name, fname)
+	}
+	if fname == "" {
+		return ""
+	}
+
 	s := ""
-	fstart := fmt.Sprintf("func %s (", p.name)
+	fstart := fmt.Sprintf("func %s (", fname)
 	s += fstart
 
 	rettype := p.type1.getReturnType()

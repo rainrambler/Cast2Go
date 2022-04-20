@@ -417,6 +417,7 @@ func (p *DeclRefExpr) t2go() string {
 	case *FunctionDecl:
 		decl := p.referencedDecl.(*FunctionDecl)
 		return decl.name
+		//return decl.t2go()
 	default:
 		return p.referencedDecl.t2go()
 	}
@@ -453,12 +454,13 @@ func (p *InitListExpr) t2go() string {
 		return ""
 	}
 
-	s := ""
+	s := LeftBraceStr
 	for _, nd := range p.inner {
 		s += nd.t2go() + CommaStr
 	}
 
 	s = RemoveLastSubStr(s, CommaStr)
+	s += RightBraceStr
 	return s
 }
 
